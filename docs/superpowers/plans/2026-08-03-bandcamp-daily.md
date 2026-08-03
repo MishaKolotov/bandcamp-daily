@@ -16,7 +16,7 @@
 
 | Что нужно | Как получить |
 |---|---|
-| Коллекция фаната | `POST https://bandcamp.com/api/fancollection/1/collection_items`, тело `{"fan_id":7566215,"older_than_token":"9999999999::a::","count":100}`. Ответ: `{items:[...], more_available:bool, last_token:"..."}`. Следующая страница — подставить `last_token` в `older_than_token`. |
+| Коллекция фаната | `POST https://bandcamp.com/api/fancollection/1/collection_items`, тело `{"fan_id":7566215,"older_than_token":"9999999999::a::","count":100}`. Ответ: `{items:[...], more_available:bool, last_token:"..."}`. **Курсор следующей страницы — поле `token` последнего элемента, а не `last_token` из ответа.** На `collection_items` при `count:100` `last_token` отстаёт и двигает выборку всего на ~20 позиций, из-за чего страницы перекрываются (223 релиза превращаются в 783 строки). На `wishlist_items` и `following_bands` `last_token` совпадает с токеном последнего элемента, но брать токен элемента правильно везде. |
 | Вишлист | Тот же вызов, эндпоинт `wishlist_items`. |
 | Подписки на группы/лейблы | Тот же вызов, эндпоинт `following_bands`. Массив лежит в ключе **`followeers`** (опечатка Bandcamp), элементы: `{band_id, name, location, url_hints:{subdomain}}`. |
 | Кандидаты по тегу | `POST https://bandcamp.com/api/discover/1/discover_web`, тело `{"category_id":0,"tag_norm_names":["crust"],"geoname_id":0,"slice":"new","time_facet_id":null,"size":60,"cursor":"*","include_result_types":["a"]}`. Ответ: `{results:[{item_id,title,item_url,band_name,band_location,...}], cursor}`. `slice` — `new` \| `top` \| `rand`. В `item_url` приклеен `?from=discover_page` — отрезать. |
@@ -24,7 +24,7 @@
 | Кто купил релиз | `POST https://bandcamp.com/api/tralbumcollectors/2/thumbs`, тело `{"tralbum_type":"a","tralbum_id":2720727045,"count":40}`. Ответ: `{results:[{fan_id,username,url}], more_available}`. |
 | Дискография группы | GET `https://<subdomain>.bandcamp.com/music`, атрибут `data-client-items` у `<ol id="music-grid">` — JSON-массив `{id,title,artist,page_url,type}`, новые сверху. У групп с одним релизом `/music` редиректит на страницу альбома и грида нет — это нормальный случай, обработать. |
 
-Владелец: `fan_id = 7566215`, username `gigamike666`, 223 релиза в коллекции, 45 подписок.
+Владелец: `fan_id = 7566215`, username `gigamike666`. Живые цифры, перепроверенные при выполнении задачи 6: **223 релиза в коллекции, 497 в вишлисте, 166 подписок** (число подписок в первой редакции плана — 45 — было взято с первой страницы профиля и оказалось неверным). Это меняет оценку стоимости: разовая сборка профиля читает ~720 страниц релизов, ежедневный обход подписок — 166 страниц `/music`.
 
 ---
 
