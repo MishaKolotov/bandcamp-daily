@@ -11,10 +11,14 @@ export interface ProfileInput {
 export interface BucketProfile {
   /**
    * Тег → вес 0..1. У самого характерного дискриминирующего тега бакета —
-   * 1. Опорный тег бакета (см. `seedTags` в `./buckets.ts`) и любой
-   * зонтичный тег (несёт большая доля релизов бакета, см. `umbrellaShare`
-   * в `BuildOptions`), если пережили порог `minReleases`, зафиксированы на
-   * 0.5 — см. комментарий в `buildProfile`.
+   * 1. Опорный тег бакета (см. `seedTags` в `./buckets.ts`), если пережил
+   * порог `minReleases`, зафиксирован на 0.5 — см. комментарий в
+   * `buildProfile`. Остальные теги весят по тому, насколько они
+   * перепредставлены в этом бакете относительно своей частоты по всей
+   * коллекции хозяина (см. комментарий у `overRepresentation` там же) —
+   * так голые 'metal'/'punk'/города, размазанные по всей коллекции,
+   * больше не всплывают к весу 1 просто за то, что несёт почти каждый
+   * релиз бакета.
    */
   tags: Record<string, number>;
   /** Теги-исключатели, заполняются задачей 11 и правятся руками. */
@@ -33,23 +37,6 @@ export interface BuildOptions {
   now: Date;
   /** Тег учитывается, только если встретился минимум в стольких релизах бакета. */
   minReleases?: number;
-  /**
-   * Доля релизов бакета, начиная с которой НЕ-опорный тег считается
-   * зонтичным (см. комментарий в `buildProfile`) и фиксируется на 0.5
-   * вместо участия в нормализации к максимуму 1.
-   *
-   * Порог 0.6 выбран по живому прогону (2026-08) на коллекции хозяина:
-   * зонтичные теги 'punk' в crust и 'metal' в death-metal (ни один не
-   * входит в seedTags своего бакета) несла «почти каждая» позиция бакета —
-   * то есть доля, близкая к 90-100%. Настоящие дискриминирующие
-   * кроссовер-теги того же прогона
-   * («doom metal», «black metal» внутри death-metal) вышли с
-   * нормализованным весом 0.28 и 0.24 — то есть их доля от максимума
-   * заведомо меньше половины. 0.6 лежит с запасом выше «почти всех» и с
-   * таким же запасом выше зоны реальных кроссоверов, так что не должен
-   * задевать характерные теги, только настоящие зонтичные.
-   */
-  umbrellaShare?: number;
 }
 
 /**
@@ -91,7 +78,6 @@ interface BucketAccumulator {
 
 export function buildProfile(items: ProfileInput[], options: BuildOptions): Profile {
   const minReleases = options.minReleases ?? 2;
-  const umbrellaShare = options.umbrellaShare ?? 0.6;
 
   const accumulators = new Map<BucketId, BucketAccumulator>();
   for (const bucket of BUCKETS) {
@@ -105,11 +91,22 @@ export function buildProfile(items: ProfileInput[], options: BuildOptions): Prof
   // каждом слишком мало, чтобы вес значил хоть что-то.
   const labels = new Map<string, number>();
 
+  // Частота тега по ВСЕЙ коллекции (числитель — число релизов с этим
+  // тегом, знаменатель — items.length), а не только по релизам бакетов.
+  // Нужна как база сравнения для overRepresentation ниже: город или
+  // 'metal' размазаны по всей коллекции целиком, включая релизы вне любого
+  // бакета (эмбиент с тегом города и т.п.) — если считать базовую частоту
+  // только по бакетированным релизам, часть их вездесущности потеряется.
+  const globalTagReleases = new Map<string, number>();
+
   for (const item of items) {
     const weight = weightOf(item, options.now);
     if (item.label) {
       const key = item.label.trim().toLowerCase();
       labels.set(key, (labels.get(key) ?? 0) + weight);
+    }
+    for (const tag of new Set(item.tags.map((t) => t.toLowerCase()))) {
+      globalTagReleases.set(tag, (globalTagReleases.get(tag) ?? 0) + 1);
     }
     // Релиз может задевать сразу несколько бакетов (кроссовер crust/hardcore
     // и т.п.) — он честно питает статистику каждого совпавшего, а не только
@@ -126,6 +123,7 @@ export function buildProfile(items: ProfileInput[], options: BuildOptions): Prof
       }
     }
   }
+  const totalReleases = items.length;
 
   const buckets = {} as Record<BucketId, BucketProfile>;
   for (const bucket of BUCKETS) {
@@ -141,34 +139,73 @@ export function buildProfile(items: ProfileInput[], options: BuildOptions): Prof
     // скорера и попадает в рассмотрение, но не может перевесить релиз,
     // совпавший со специфическим вкусом хозяина.
     //
-    // Та же болезнь бьёт и НЕ-опорные теги: живой прогон (2026-08) показал
-    // 'metal' весом 1 в death-metal и 'punk' весом 1 в crust — теги, которых
-    // ни разу не было в seedTags этих бакетов, но которые несёт почти
-    // каждый релиз бакета, так что они точно так же съедали шкалу и не
-    // различали ничего. Обобщаем: любой тег (опорный или нет), несущий
-    // долю релизов бакета не ниже umbrellaShare, — зонтичный, и получает
-    // тот же фиксированный вес 0.5, а не участвует в нормализации.
-    // Нормализуется к максимуму 1 только оставшийся, по-настоящему
-    // дискриминирующий остаток.
-    const nonSeedWeights = new Map<string, number>();
+    // НЕ-опорные теги нормализуются не по сырому весу, а по
+    // over-representation: живой прогон (2026-08), уже после того как
+    // прошлая версия зафиксировала 'metal'/'punk' на 0.5 по доле в
+    // бакете, всё равно вывела в топ шкалы города ('new york' 1, 'london'
+    // 0.82 в hardcore-punk; 'seattle', 'denver', 'omaha' чуть ниже
+    // seed-тегов). Доля релизов бакета сама по себе не отличает
+    // характерное от вездесущего: город или голый жанр-омоним несёт
+    // большую долю РАВНОМЕРНО по всей коллекции, а не именно этого
+    // бакета. Мера — во сколько раз доля тега среди релизов бакета выше
+    // его доли среди релизов всей коллекции хозяина (bucketRate /
+    // globalRate, см. overRepresentation ниже).
+    //
+    // Взять это отношение напрямую как счёт (score = weight × ratio)
+    // недостаточно: тег, у которого ratio ровно 1 (город одинаково
+    // вездесущ и в бакете, и в среднем по коллекции — как раз случай
+    // 'new york'), даёт НУЛЕВОЙ сигнал о принадлежности бакету, но при
+    // прямом умножении весит тем больше, чем чаще встречается — то есть
+    // именно вездесущность (а не характерность) снова тянула бы его
+    // наверх шкалы, просто через другую формулу. Правильная мера
+    // "насколько это информативно" — log(ratio): она равна ровно нулю
+    // при ratio = 1 (тег с одинаковой частотой внутри и снаружи бакета не
+    // несёт вообще никакого сигнала, сколько бы раз он ни встретился —
+    // сама PMI, pointwise mutual information, устроена так же) и растёт
+    // при ratio > 1 (тег гуще в этом бакете, чем в среднем). Отрицательный
+    // log (ratio < 1, тег РЕЖЕ встречается в бакете, чем в среднем)
+    // подрезаем нулём — это тоже "нет сигнала в пользу бакета", а не
+    // повод уходить в минус.
+    //
+    // Два подводных камня, о которых просили позаботиться отдельно:
+    // 1) Тег на 2 релизах бакета может дать огромный ratio просто от шума
+    //    маленькой выборки (2 из бакета против 2 на всю коллекцию —
+    //    отношение уже большое, а свидетельства почти нет). log сам по
+    //    себе уже сглаживает выброс (log(200) ≈ 5.3, а не 200), но
+    //    итоговый счёт всё равно домножается на stat.weight: тег с тем же
+    //    ratio, но втрое большим числом релизов (весом), втрое
+    //    перевешивает — количество свидетельств учитывается прямо, а не
+    //    только направление скоса. minReleases (порог 2 по умолчанию)
+    //    остаётся жёстким полом снизу.
+    // 2) Тег, который вообще не встречается больше нигде в коллекции,
+    //    кроме как в релизах этого бакета, — частный, но не патологический
+    //    случай: релизы бакета — подмножество всей коллекции, поэтому его
+    //    глобальный счётчик всегда включает и вхождения внутри бакета
+    //    (globalCount >= stat.releases >= minReleases > 0), и globalRate
+    //    никогда не бывает нулевым, когда bucketRate ненулевой — деления
+    //    на ноль тут в принципе не возникает (ratio ограничен сверху
+    //    totalReleases/acc.releaseCount). Проверка ниже — защита на
+    //    случай, если этот инвариант когда-нибудь нарушится (например,
+    //    globalTagReleases начнут копить по другому источнику): тогда тег
+    //    получит нейтральный overRepresentation 1 (log = 0), а не
+    //    NaN/Infinity.
+    const nonSeedScores = new Map<string, number>();
     const keptSeedTags: string[] = [];
-    const umbrellaTags: string[] = [];
     for (const [tag, stat] of acc.tags) {
       if (stat.releases < minReleases) continue;
       if (seedTags.has(tag)) {
         keptSeedTags.push(tag);
         continue;
       }
-      const share = acc.releaseCount > 0 ? stat.releases / acc.releaseCount : 0;
-      if (share >= umbrellaShare) {
-        umbrellaTags.push(tag);
-      } else {
-        nonSeedWeights.set(tag, stat.weight);
-      }
+      const bucketRate = acc.releaseCount > 0 ? stat.releases / acc.releaseCount : 0;
+      const globalCount = globalTagReleases.get(tag) ?? stat.releases;
+      const globalRate = totalReleases > 0 ? globalCount / totalReleases : 0;
+      const overRepresentation = globalRate > 0 ? bucketRate / globalRate : 1;
+      const informativeness = Math.max(0, Math.log(overRepresentation));
+      nonSeedScores.set(tag, stat.weight * informativeness);
     }
-    const tags = normalize(nonSeedWeights);
+    const tags = normalize(nonSeedScores);
     for (const tag of keptSeedTags) tags[tag] = 0.5;
-    for (const tag of umbrellaTags) tags[tag] = 0.5;
 
     buckets[bucket.id] = {
       tags,

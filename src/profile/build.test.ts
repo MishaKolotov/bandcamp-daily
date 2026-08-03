@@ -47,12 +47,25 @@ test('самый тяжёлый не-опорный тег весит ровно
       release({ tags: ['crust', 'raw'] }),
       release({ tags: ['crust', 'stenchy'] }),
       release({ tags: ['crust', 'stenchy'] }),
-      // Три релиза без 'raw'/'stenchy' — держат долю обоих тегов ниже
-      // umbrellaShare (0.6 по умолчанию), иначе 'raw' (3 из 5 = 60%) сам
-      // попал бы под зонтичный порог и не дошёл бы до строгого 1.
       release({ tags: ['crust'] }),
       release({ tags: ['crust'] }),
       release({ tags: ['crust'] }),
+      // Пять релизов другого бакета (hardcore-punk), не касающиеся crust
+      // вовсе и без 'raw'/'stenchy' — нужны как контрастная популяция.
+      // Без них вся коллекция теста была бы = самому бакету crust, частота
+      // 'raw'/'stenchy' по бакету и по «всей коллекции» совпала бы один в
+      // один, over-representation обоих вышел бы ровно 1, а log(1) = 0 —
+      // оба тега обнулились бы одинаково вместо того, чтобы разойтись по
+      // числу релизов. С контрастом оба тега встречаются ИСКЛЮЧИТЕЛЬНО
+      // внутри crust, поэтому их over-representation равен между собой
+      // (totalReleases / releaseCount бакета — константа, не зависящая от
+      // числа релизов тега), и различает их только вес: у 'raw' 3 релиза,
+      // у 'stenchy' — 2.
+      release({ tags: ['hardcore punk'] }),
+      release({ tags: ['hardcore punk'] }),
+      release({ tags: ['hardcore punk'] }),
+      release({ tags: ['hardcore punk'] }),
+      release({ tags: ['hardcore punk'] }),
     ],
     { now: new Date('2026-08-03'), minReleases: 2 },
   );
@@ -67,6 +80,10 @@ test('набор со специфичным тегом суммарно вес�
       release({ tags: ['crust', 'raw'] }),
       release({ tags: ['crust', 'raw'] }),
       release({ tags: ['crust'] }),
+      // Контрастная популяция вне crust — см. комментарий в предыдущем
+      // тесте: без неё 'raw' обнулился бы (over-representation ровно 1).
+      release({ tags: ['hardcore punk'] }),
+      release({ tags: ['hardcore punk'] }),
     ],
     { now: new Date('2026-08-03'), minReleases: 2 },
   );
@@ -75,49 +92,50 @@ test('набор со специфичным тегом суммарно вес�
   assert.ok(sumOf(['crust', 'raw']) > sumOf(['crust']));
 });
 
-test('НЕ-опорный тег почти на всех релизах бакета — зонтичный, весит 0.5 и не перевешивает редкий характерный тег', () => {
-  // Воспроизводит живой прогон 2026-08: 'metal' был на 21/21 (100%) релизов
-  // death-metal и вышел с весом 1, хотя ничего не различал. Здесь —
-  // синтетический аналог: 'metal' на 9 из 10 релизов crust (не seed-тег
-  // этого бакета), 'raw' — на 2 из 10 (редкий, но специфичный).
-  const releases: ProfileInput[] = [];
-  for (let i = 0; i < 10; i++) {
-    if (i === 9) {
-      releases.push(release({ tags: ['crust'] })); // без 'metal' — доля 90%, не 100%
-    } else if (i < 2) {
-      releases.push(release({ tags: ['crust', 'metal', 'raw'] }));
-    } else {
-      releases.push(release({ tags: ['crust', 'metal'] }));
+test('тег, размазанный поровну по всем бакетам, не перевешивает тег, сосредоточенный в одном', () => {
+  // Прямое воспроизведение живого прогона 2026-08: после того как прошлый
+  // фикс зафиксировал ПОЧТИ-повсеместные 'metal'/'punk' на 0.5, наверх
+  // шкалы всё равно всплыли города — 'new york' весом 1 в hardcore-punk,
+  // выше даже 'post-punk' (0.81) и опорного для соседнего бакета 'crust'
+  // (0.64). Синтетический аналог: 'new york' встречается ровно в 60%
+  // релизов КАЖДОГО из четырёх бакетов — то есть у него нет никакой связи
+  // именно с hardcore-punk, доля внутри бакета равна доле по всей
+  // коллекции. 'post-punk' встречается тоже в 30% релизов hardcore-punk,
+  // но ВООБЩЕ не встречается ни в одном другом бакете — сосредоточен.
+  const buildBucketReleases = (seedTag: string, cityCount: number, extraTag?: [string, number]): ProfileInput[] => {
+    const releases: ProfileInput[] = [];
+    for (let i = 0; i < 10; i++) {
+      const tags = [seedTag];
+      if (i < cityCount) tags.push('new york');
+      if (extraTag && i < extraTag[1]) tags.push(extraTag[0]);
+      releases.push(release({ tags }));
     }
-  }
+    return releases;
+  };
+
+  const releases: ProfileInput[] = [
+    ...buildBucketReleases('crust', 6),
+    ...buildBucketReleases('death metal', 6),
+    ...buildBucketReleases('hardcore punk', 6, ['post-punk', 3]),
+    ...buildBucketReleases('black metal', 6),
+  ];
 
   const profile = buildProfile(releases, { now: new Date('2026-08-03'), minReleases: 2 });
 
-  assert.equal(profile.buckets.crust.tags['metal'], 0.5, 'почти-повсеместный тег должен быть зонтичным (0.5)');
-  assert.equal(profile.buckets.crust.tags['raw'], 1, 'редкий специфичный тег должен нормализоваться к 1');
-  assert.ok(
-    profile.buckets.crust.tags['raw']! > profile.buckets.crust.tags['metal']!,
-    'редкий характерный тег обязан весить больше зонтичного',
+  assert.equal(
+    profile.buckets['hardcore-punk'].tags['new york'],
+    0,
+    'город с одинаковой долей везде не несёт сигнала о принадлежности бакету',
   );
-});
-
-test('umbrellaShare — настраиваемый порог: заниженный ловит тег, который дефолт бы пропустил', () => {
-  // 'occasional' встречается на 3 из 10 релизов (30%) — ниже дефолтного
-  // порога 0.6, но выше явно заданного 0.25.
-  const releases: ProfileInput[] = [];
-  for (let i = 0; i < 10; i++) {
-    releases.push(release({ tags: i < 3 ? ['crust', 'occasional'] : ['crust'] }));
-  }
-
-  const withDefault = buildProfile(releases, { now: new Date('2026-08-03'), minReleases: 2 });
-  assert.equal(withDefault.buckets.crust.tags['occasional'], 1, 'при дефолтном пороге тег не зонтичный');
-
-  const withLowThreshold = buildProfile(releases, {
-    now: new Date('2026-08-03'),
-    minReleases: 2,
-    umbrellaShare: 0.25,
-  });
-  assert.equal(withLowThreshold.buckets.crust.tags['occasional'], 0.5, 'при пониженном пороге тег зонтичный');
+  assert.equal(
+    profile.buckets['hardcore-punk'].tags['post-punk'],
+    1,
+    'тег, сосредоточенный только в этом бакете, должен нормализоваться к максимуму',
+  );
+  assert.ok(
+    profile.buckets['hardcore-punk'].tags['post-punk']! > profile.buckets['hardcore-punk'].tags['new york']!,
+    'сосредоточенный жанровый тег обязан весить больше размазанного города',
+  );
 });
 
 test('редкий тег отбрасывается порогом minReleases', () => {
@@ -185,10 +203,25 @@ test('кроссовер-релиз питает статистику обоих
     [
       release({ tags: ['crust', 'hardcore punk'] }),
       release({ tags: ['crust', 'hardcore punk'] }),
+      // Без контрастной популяции (см. комментарий у over-representation в
+      // buildProfile) вся коллекция теста свелась бы к паре кроссоверов —
+      // тогда доля 'hardcore punk' внутри crust совпала бы с его долей по
+      // всей коллекции один в один (та же беда, что и в двух тестах выше),
+      // и оба нессид-тега обнулились бы вместо того, чтобы получить
+      // положительный вес. Добавляем чистый crust (без hardcore punk) —
+      // разбавляет долю 'hardcore punk' именно внутри crust вниз — и
+      // релизы вовсе другого бакета — разбавляют глобальную долю обоих
+      // тегов вниз ещё сильнее, чем локальную.
+      release({ tags: ['crust'] }),
+      release({ tags: ['crust'] }),
+      release({ tags: ['crust'] }),
+      release({ tags: ['death metal'] }),
+      release({ tags: ['death metal'] }),
+      release({ tags: ['death metal'] }),
     ],
     { now: new Date('2026-08-03'), minReleases: 2 },
   );
-  assert.equal(profile.buckets.crust.releaseCount, 2);
+  assert.equal(profile.buckets.crust.releaseCount, 5);
   assert.equal(profile.buckets['hardcore-punk'].releaseCount, 2);
   assert.ok(profile.buckets.crust.tags['hardcore punk']! > 0);
   assert.ok(profile.buckets['hardcore-punk'].tags['crust']! > 0);
