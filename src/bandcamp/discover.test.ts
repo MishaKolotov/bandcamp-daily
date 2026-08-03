@@ -81,6 +81,28 @@ test('служебный from=discover_page отрезается от ссылк
   assert.equal(first?.url, 'https://rebel-base-ngt.bandcamp.com/album/-');
 });
 
+// Поле location убиралось как неиспользуемое, вернули для словаря
+// географических тегов (src/profile/locations.ts) — три теста ниже
+// регресс на то, что band_location снова прокидывается в DiscoverItem.
+test('band_location уходит в поле location', async () => {
+  const { http } = stub({ results: [result], result_count: 1 });
+  const [first] = await discover(http, { tag: 'crust', slice: 'new' });
+  assert.equal(first?.location, 'Japan');
+});
+
+test('пустая строка band_location превращается в null', async () => {
+  const { http } = stub({ results: [{ ...result, band_location: '' }], result_count: 1 });
+  const [first] = await discover(http, { tag: 'crust', slice: 'new' });
+  assert.equal(first?.location, null);
+});
+
+test('отсутствующий band_location превращается в null', async () => {
+  const { band_location, ...withoutLocation } = result;
+  const { http } = stub({ results: [withoutLocation], result_count: 1 });
+  const [first] = await discover(http, { tag: 'crust', slice: 'new' });
+  assert.equal(first?.location, null);
+});
+
 test('пустой ответ отдаёт пустой список, а не падение', async () => {
   const { http } = stub({ results: [], result_count: 0 });
   assert.deepEqual(await discover(http, { tag: 'crust', slice: 'new' }), []);

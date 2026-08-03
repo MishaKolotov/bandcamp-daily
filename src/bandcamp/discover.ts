@@ -7,6 +7,15 @@ export interface DiscoverItem {
   url: string;
   title: string;
   artist: string;
+  /**
+   * `band_location` из ответа Discover как есть — свободный текст вида
+   * 'Japan', 'Peralillo, Chile', 'Seattle, Washington', null если Bandcamp
+   * его не отдал. Убиралось как неиспользуемое (см. историю коммитов),
+   * вернули: `src/profile/locations.ts` харвестит это поле из хаб-сэмплов
+   * антипрофиля, чтобы строить словарь географических тегов — см. комментарий
+   * там же.
+   */
+  location: string | null;
 }
 
 export interface DiscoverOptions {
@@ -21,6 +30,7 @@ interface RawResult {
   item_url?: string;
   title?: string;
   band_name?: string;
+  band_location?: string | null;
 }
 
 interface DiscoverResponse {
@@ -82,5 +92,9 @@ export async function discover(http: Http, options: DiscoverOptions): Promise<Di
     url: (item.item_url ?? '').split('?')[0] ?? '',
     title: item.title ?? '',
     artist: item.band_name ?? '',
+    // '||', не '??': живой прогон (2026-08) отдал пустую строку у части
+    // результатов (артист не указал локацию) — это то же самое «нет
+    // данных», что и null, а не осмысленное значение "".
+    location: item.band_location || null,
   }));
 }

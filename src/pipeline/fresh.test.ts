@@ -33,7 +33,7 @@ const baseOptions = {
 test('релизы из хаба и от подписок объединяются', async () => {
   const found = await freshCandidates(
     deps({
-      discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X' }],
+      discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X', location: null }],
       bandReleases: async () => [{ url: 'https://b.test/album/2', title: 'B' }],
     }),
     { ...baseOptions, subdomains: ['b'] },
@@ -44,7 +44,7 @@ test('релизы из хаба и от подписок объединяютс
 test('старые релизы отсекаются по дате', async () => {
   const found = await freshCandidates(
     deps({
-      discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X' }],
+      discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X', location: null }],
       album: async () => album({ releasedAt: '2020-01-01' }),
     }),
     baseOptions,
@@ -55,7 +55,7 @@ test('старые релизы отсекаются по дате', async () =>
 test('релиз без даты не проходит — дату проверить нечем', async () => {
   const found = await freshCandidates(
     deps({
-      discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X' }],
+      discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X', location: null }],
       album: async () => album({ releasedAt: null }),
     }),
     baseOptions,
@@ -66,7 +66,7 @@ test('релиз без даты не проходит — дату провер
 test('предзаказ с датой в будущем считается свежим', async () => {
   const found = await freshCandidates(
     deps({
-      discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X' }],
+      discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X', location: null }],
       album: async () => album({ releasedAt: '2026-09-01' }),
     }),
     baseOptions,
@@ -77,7 +77,7 @@ test('предзаказ с датой в будущем считается св
 test('один и тот же релиз из двух источников не дублируется', async () => {
   const found = await freshCandidates(
     deps({
-      discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X' }],
+      discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X', location: null }],
       bandReleases: async () => [{ url: 'https://a.test/album/1', title: 'A' }],
     }),
     { ...baseOptions, subdomains: ['a'] },
@@ -88,7 +88,7 @@ test('один и тот же релиз из двух источников не
 test('нечитаемая страница релиза просто выбрасывает кандидата', async () => {
   const found = await freshCandidates(
     deps({
-      discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X' }],
+      discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X', location: null }],
       album: async () => null,
     }),
     baseOptions,
@@ -132,7 +132,7 @@ test('предзаказ ровно на границе maxFutureDays прохо
   // '2026-08-03' -> +30 дней ровно = '2026-09-02'.
   const found = await freshCandidates(
     deps({
-      discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X' }],
+      discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X', location: null }],
       album: async () => album({ releasedAt: '2026-09-02' }),
     }),
     baseOptions,
@@ -144,7 +144,7 @@ test('предзаказ дальше maxFutureDays отбрасывается',
   // На день дальше границы — '2026-09-03'.
   const found = await freshCandidates(
     deps({
-      discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X' }],
+      discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X', location: null }],
       album: async () => album({ releasedAt: '2026-09-03' }),
     }),
     baseOptions,
@@ -155,7 +155,9 @@ test('предзаказ дальше maxFutureDays отбрасывается',
 test('пустые title/artist со страницы релиза подменяются данными источника', async () => {
   const found = await freshCandidates(
     deps({
-      discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'Hub Title', artist: 'Hub Artist' }],
+      discover: async () => [
+        { itemId: 1, url: 'https://a.test/album/1', title: 'Hub Title', artist: 'Hub Artist', location: null },
+      ],
       album: async () => album({ title: '', artist: '' }),
     }),
     baseOptions,
@@ -174,8 +176,8 @@ test('отброшенные из-за отсутствия даты канди�
     const found = await freshCandidates(
       deps({
         discover: async () => [
-          { itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X' },
-          { itemId: 2, url: 'https://a.test/album/2', title: 'B', artist: 'Y' },
+          { itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X', location: null },
+          { itemId: 2, url: 'https://a.test/album/2', title: 'B', artist: 'Y', location: null },
         ],
         album: async (url) => (url.endsWith('/1') ? null : album({})),
       }),

@@ -14,13 +14,19 @@
  */
 import { access } from 'node:fs/promises';
 import { Http } from '../src/lib/http.ts';
-import { writeJson } from '../src/lib/state.ts';
+import { readJson, writeJson } from '../src/lib/state.ts';
 import { fetchAlbum } from '../src/bandcamp/album.ts';
 import { fetchFanItems } from '../src/bandcamp/fan.ts';
 import { discover } from '../src/bandcamp/discover.ts';
 import { BUCKETS, bucketsOf, hubSampleTags } from '../src/profile/buckets.ts';
 import { buildProfile, type ProfileInput } from '../src/profile/build.ts';
 import { deriveStopTags } from '../src/profile/stop-tags.ts';
+import {
+  buildLocationVocabulary,
+  type LocationSample,
+  type LocationVocabularyFile,
+} from '../src/profile/locations.ts';
+import type { BucketId } from '../src/bandcamp/types.ts';
 
 const OWNER_FAN_ID = 7566215;
 /** Сколько релизов тег-хаба запрашивать на один хаб-тег. */
@@ -48,27 +54,30 @@ const MIN_RELEASES_WARN = 10;
 const MIN_TAGS_WARN = 5;
 
 const PROFILE_PATH = 'data/profile.json';
+const LOCATION_VOCAB_PATH = 'data/location-vocabulary.json';
 
 /**
  * Профиль правится руками, и правки — это единственная вкусовая настройка во
  * всей системе. Молча затереть их пересборкой недопустимо, поэтому перезапись
- * требует явного `--force`, а не просто повторного запуска скрипта.
+ * требует явного `--force`, а не просто повторного запуска скрипта. Прогон
+ * без него отменяется целиком ДО сети — иначе 20-40 минут запросов ушли бы
+ * впустую на результат, который всё равно нельзя сохранить.
  */
-async function assertWritable(): Promise<void> {
+async function assertWritable(path: string): Promise<void> {
   if (process.argv.includes('--force')) return;
   try {
-    await access(PROFILE_PATH);
+    await access(path);
   } catch {
     return;
   }
   console.error(
-    `${PROFILE_PATH} уже существует. Пересборка затрёт правки, внесённые руками.\n` +
+    `${path} уже существует. Пересборка затрёт правки, внесённые руками.\n` +
       'Если это то, что нужно: сохрани текущий файл где-нибудь и запусти с флагом --force.',
   );
   process.exit(1);
 }
 
-await assertWritable();
+await assertWritable(PROFILE_PATH);
 
 const http = new Http({ cacheDir: '.cache', minDelayMs: 900 });
 
@@ -119,9 +128,17 @@ console.log(
   `Страницы релизов прочитаны: ${inputs.length} успешно, ${unreadable} пропущено (страница недоступна или не разобралась).`,
 );
 
-const profile = buildProfile(inputs, { now: new Date(), minReleases: 2 });
+// Антипрофиль (hubTagCounts на стоп-теги) и словарь мест (locationVocabulary
+// на веса тегов) харвестятся ОДНИМ и тем же проходом по тег-хабам Discover —
+// band_location едет в том же ответе, за который и так уже платим сетевым
+// запросом ради подсчёта тегов хаба, см. комментарий у DiscoverItem.location.
+// Поэтому этот проход идёт ДО buildProfile: словарь мест нужен buildProfile
+// на входе (см. locationVocabulary в BuildOptions), а не пристёгивается
+// постфактум.
+console.log('\nСобираю антипрофиль из тег-хабов Discover (для стоп-тегов и словаря мест)...');
+const bucketHubData = new Map<BucketId, { hubTagCounts: Record<string, number>; releasesSampled: number }>();
+const locationSamples: LocationSample[] = [];
 
-console.log('\nСобираю антипрофиль из тег-хабов Discover (для стоп-тегов)...');
 for (const bucket of BUCKETS) {
   const hubTagCounts: Record<string, number> = {};
   const hubTags = hubSampleTags(bucket, HUB_TAGS_PER_BUCKET);
@@ -130,6 +147,7 @@ for (const bucket of BUCKETS) {
   for (const tag of hubTags) {
     const hubItems = await discover(http, { tag, slice: 'top', size: HUB_SAMPLE_SIZE });
     for (const hubItem of hubItems) {
+      locationSamples.push({ location: hubItem.location, artist: hubItem.artist });
       const album = await fetchAlbum(http, hubItem.url);
       if (!album) continue;
       releasesSampled += 1;
@@ -139,27 +157,72 @@ for (const bucket of BUCKETS) {
     }
   }
 
+  bucketHubData.set(bucket.id, { hubTagCounts, releasesSampled });
+  console.log(`  ${bucket.channelTitle}: хаб-теги [${hubTags.join(', ')}], сэмплировано релизов хаба: ${releasesSampled}`);
+}
+
+/**
+ * Словарь мест правится руками так же, как profile.json (см. assertWritable
+ * выше) — но мягче: если файл уже есть и --force не передан, прогон не
+ * прерывается целиком (словарь — вспомогательный вход, а не терминальный
+ * результат), а просто читает и использует сохранённую версию, оставляя
+ * ручные правки владельца нетронутыми. Свежесобранный вариант при этом
+ * не выбрасывается молча — его размер печатается рядом, чтобы было видно,
+ * разошлись ли харвест этого прогона и сохранённый файл.
+ */
+const harvestedLocations = buildLocationVocabulary(locationSamples);
+const existingVocabFile = await readJson<LocationVocabularyFile | null>(LOCATION_VOCAB_PATH, null);
+const forceVocabRewrite = process.argv.includes('--force');
+
+let locationVocabulary: Set<string>;
+if (existingVocabFile && !forceVocabRewrite) {
+  locationVocabulary = new Set(existingVocabFile.locations);
+  console.log(
+    `\nСловарь мест: использую сохранённый ${LOCATION_VOCAB_PATH} (${existingVocabFile.locations.length} записей, ` +
+      `от ${existingVocabFile.generatedAt}). Свежий харвест этого прогона дал бы ${harvestedLocations.length} записей — ` +
+      `если разброс большой, пересобери файл через --force и сверь его руками.`,
+  );
+} else {
+  locationVocabulary = new Set(harvestedLocations);
+  const vocabFile: LocationVocabularyFile = {
+    generatedAt: new Date().toISOString().slice(0, 10),
+    samplesHarvested: locationSamples.length,
+    minDistinctArtists: 2,
+    locations: harvestedLocations,
+  };
+  await writeJson(LOCATION_VOCAB_PATH, vocabFile);
+  console.log(
+    `\nСловарь мест: собрал заново из ${locationSamples.length} сэмплов band_location, ` +
+      `${harvestedLocations.length} записей, записал в ${LOCATION_VOCAB_PATH}. Просмотри файл руками — ` +
+      'это единственная защита от ложных срабатываний (город, который по совпадению значит что-то ещё).',
+  );
+}
+
+const profile = buildProfile(inputs, { now: new Date(), minReleases: 2, locationVocabulary });
+
+console.log('\nСтоп-теги по бакетам...');
+for (const bucket of BUCKETS) {
+  const hubData = bucketHubData.get(bucket.id)!;
+
   // minHubShare/minHubCount/minOwnedCount умышленно не переданы — берём
   // дефолты deriveStopTags (0.2 доли, пол 5, владение с 2 вхождений). Смена
-  // источника хаб-тегов (см. выше) не меняет ни число хабов на бакет
-  // (HUB_TAGS_PER_BUCKET всё те же 3), ни размер каждого (HUB_SAMPLE_SIZE
-  // всё те же 60) — пул как был 60-180 сэмплированных релизов, так и
-  // остался, а именно под этот диапазон калибровался порог 0.2 (см.
-  // комментарий у minHubShare в stop-tags.ts). Пустые стоп-листы живого
-  // прогона были следствием ДВУХ независимых причин — мусорного ВХОДА
-  // хабов (чинит hubSampleTags, уже сделано) и слишком мягкого теста
-  // владения, где одно случайное вхождение тега иммунизировало его
-  // навсегда (чинит minOwnedCount в deriveStopTags) — а не порога самой
-  // частоты в хабе, так что его не трогаем.
+  // источника хаб-тегов (см. комментарий у HUB_TAGS_PER_BUCKET) не меняет ни
+  // число хабов на бакет, ни размер каждого — пул как был 60-180
+  // сэмплированных релизов, так и остался, а именно под этот диапазон
+  // калибровался порог 0.2 (см. комментарий у minHubShare в stop-tags.ts).
+  // Пустые стоп-листы живого прогона были следствием ДВУХ независимых
+  // причин — мусорного ВХОДА хабов (чинит hubSampleTags, уже сделано) и
+  // слишком мягкого теста владения (чинит minOwnedCount, см. отдельный
+  // коммит) — а не порога самой частоты в хабе, так что его не трогаем.
   profile.buckets[bucket.id].stopTags = deriveStopTags({
-    hubTagCounts,
+    hubTagCounts: hubData.hubTagCounts,
     ownedTagCounts,
     seedTags: bucket.seedTags,
-    releasesSampled,
+    releasesSampled: hubData.releasesSampled,
   });
 
   console.log(
-    `  ${bucket.channelTitle}: хаб-теги [${hubTags.join(', ')}], сэмплировано релизов хаба: ${releasesSampled}, стоп-тегов найдено: ${profile.buckets[bucket.id].stopTags.length}`,
+    `  ${bucket.channelTitle}: стоп-тегов найдено: ${profile.buckets[bucket.id].stopTags.length}`,
   );
 }
 
@@ -203,3 +266,4 @@ console.log(`\nРелизов вне всех бакетов: ${unbucketed} из
 console.log(`Релизов пропущено из-за нечитаемой страницы: ${unreadable} из ${fanItems.length}.`);
 console.log(`\nПрофиль записан в ${PROFILE_PATH}. Правь tags и stopTags прямо в файле —`);
 console.log('повторный запуск без --force его не тронет, чтобы правки не потерялись.');
+console.log(`Словарь мест — в ${LOCATION_VOCAB_PATH}, тем же правилом --force.`);

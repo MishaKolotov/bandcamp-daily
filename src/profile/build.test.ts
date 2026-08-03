@@ -138,6 +138,61 @@ test('тег, размазанный поровну по всем бакетам
   );
 });
 
+test('тег из словаря локаций не получает веса, даже когда статистически перепредставлен в бакете', () => {
+  // Прямое воспроизведение реального бага (не синтетический "размазан
+  // поровну", как в тесте выше): 'richmond' здесь ГЕНУИННО перепредставлен
+  // именно в hardcore-punk (8 из 10 релизов бакета против 0 в контрастной
+  // популяции) — over-representation тут > 1 по-настоящему, и без словаря
+  // локаций тег корректно всплыл бы к максимуму шкалы. Именно так живой
+  // прогон 2026-08 дал 'new york' весом 1: статистика была честной, просто
+  // не про жанр. Словарь обязан убить тег вообще, а не просто снизить вес.
+  const releases: ProfileInput[] = [
+    ...Array.from({ length: 8 }, () => release({ tags: ['hardcore punk', 'richmond'] })),
+    ...Array.from({ length: 2 }, () => release({ tags: ['hardcore punk'] })),
+    ...Array.from({ length: 10 }, () => release({ tags: ['crust'] })),
+  ];
+  const profile = buildProfile(releases, {
+    now: new Date('2026-08-03'),
+    minReleases: 2,
+    locationVocabulary: new Set(['richmond']),
+  });
+  assert.equal(profile.buckets['hardcore-punk'].tags['richmond'], undefined);
+});
+
+test('без словаря локаций тот же перепредставленный город получает вес — контроль на предыдущий тест', () => {
+  const releases: ProfileInput[] = [
+    ...Array.from({ length: 8 }, () => release({ tags: ['hardcore punk', 'richmond'] })),
+    ...Array.from({ length: 2 }, () => release({ tags: ['hardcore punk'] })),
+    ...Array.from({ length: 10 }, () => release({ tags: ['crust'] })),
+  ];
+  const profile = buildProfile(releases, { now: new Date('2026-08-03'), minReleases: 2 });
+  assert.ok(profile.buckets['hardcore-punk'].tags['richmond']! > 0);
+});
+
+test('опорный тег бакета переживает словарь локаций, даже если туда затесался', () => {
+  const profile = buildProfile([release({ tags: ['crust'] }), release({ tags: ['crust'] })], {
+    now: new Date('2026-08-03'),
+    minReleases: 1,
+    locationVocabulary: new Set(['crust']),
+  });
+  assert.equal(profile.buckets.crust.tags['crust'], 0.5);
+});
+
+test('словарь локаций не задевает теги, которых в нём нет', () => {
+  const releases: ProfileInput[] = [
+    ...Array.from({ length: 8 }, () => release({ tags: ['hardcore punk', 'richmond', 'post-punk'] })),
+    ...Array.from({ length: 2 }, () => release({ tags: ['hardcore punk'] })),
+    ...Array.from({ length: 10 }, () => release({ tags: ['crust'] })),
+  ];
+  const profile = buildProfile(releases, {
+    now: new Date('2026-08-03'),
+    minReleases: 2,
+    locationVocabulary: new Set(['richmond']),
+  });
+  assert.equal(profile.buckets['hardcore-punk'].tags['richmond'], undefined);
+  assert.ok(profile.buckets['hardcore-punk'].tags['post-punk']! > 0);
+});
+
 test('редкий тег отбрасывается порогом minReleases', () => {
   const profile = buildProfile(
     [
