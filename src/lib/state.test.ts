@@ -57,7 +57,7 @@ test('битый JSON не роняет запуск, откатывается �
   await rm(dir, { recursive: true, force: true });
 });
 
-test('запись атомарна: осиротевший временный файл рядом не портит чтение состояния', async () => {
+test('осиротевший временный файл рядом не портит чтение состояния', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'bc-state-'));
   const path = join(dir, 'atomic.json');
   await writeJson(path, { a: 1 });
