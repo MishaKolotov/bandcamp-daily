@@ -41,3 +41,8 @@ test('кроссовер-релиз питает статистику всех �
 test('совпадение регистронезависимо', () => {
   assert.deepEqual(bucketsOf(['Crust Punk', 'D-Beat']), ['crust']);
 });
+
+test('голые punk и hardcore относят релиз в hardcore-punk', () => {
+  assert.deepEqual(bucketsOf(['punk']), ['hardcore-punk']);
+  assert.deepEqual(bucketsOf(['hardcore']), ['hardcore-punk']);
+});

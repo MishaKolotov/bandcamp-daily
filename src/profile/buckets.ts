@@ -45,15 +45,30 @@ export const BUCKETS: readonly BucketDef[] = Object.freeze([
     id: 'hardcore-punk' as const,
     channelTitle: 'HARDCORE PUNK DAILY',
     channelEnv: 'HARDCORE_PUNK_CHANNEL_ID',
-    // Голые 'hardcore' и 'punk' намеренно не включены: на Bandcamp это
+    // Голые 'hardcore' и 'punk' раньше были намеренно исключены как
     // теги-омонимы (electronic/uptempo hardcore, pop punk, skate punk и
-    // т.п.) — релиз с таким тегом не обязательно хардкор-панк.
+    // т.п.) — в абстракте это верно, но живой прогон на коллекции хозяина
+    // (2026-08) показал цену: из 397 релизов, не попавших ни в один
+    // бакет, 280 несли 'punk' и 107 — 'hardcore' и больше ничего
+    // специфичного, то есть отсекались подчистую. Хозяин решил вернуть оба
+    // тега: для этой конкретной коллекции они разметочный, а не
+    // омонимный сигнал. Оба голых тега лежат в общем seed-веса-0.5
+    // механизме buildProfile — переубеждать скорера они как максимум
+    // наравне с остальными опорными тегами, не выше.
     // Список намеренно короткий: 'youth crew' и 'straight edge' сюда не
     // входят — это сужение до одной американской линии хардкора, а
     // 'straight edge' вдобавок теговый омоним (пересекается с metalcore).
     // Не дополнять "для ровного счёта" — недостающее вытянут derived-веса
     // из данных, а хозяин всё равно проверяет профиль руками.
-    seedTags: Object.freeze(['hardcore punk', 'hardcore-punk', 'powerviolence', 'raw punk', 'ukhc']),
+    seedTags: Object.freeze([
+      'hardcore punk',
+      'hardcore-punk',
+      'powerviolence',
+      'raw punk',
+      'ukhc',
+      'punk',
+      'hardcore',
+    ]),
   }),
 ]);
 
