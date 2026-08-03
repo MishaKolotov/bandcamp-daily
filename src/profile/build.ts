@@ -9,7 +9,11 @@ export interface ProfileInput {
 }
 
 export interface BucketProfile {
-  /** Тег → вес 0..1, где 1 у самого характерного тега бакета. */
+  /**
+   * Тег → вес 0..1. У самого характерного НЕ-опорного тега бакета — 1.
+   * Опорный тег бакета (см. `seedTags` в `./buckets.ts`), если пережил
+   * порог `minReleases`, зафиксирован на 0.5 — см. комментарий в `buildProfile`.
+   */
   tags: Record<string, number>;
   /** Теги-исключатели, заполняются задачей 11 и правятся руками. */
   stopTags: string[];
@@ -30,13 +34,19 @@ export interface BuildOptions {
 }
 
 /**
- * Вишлист — это «хочу сейчас», он важнее старой покупки.
- * Покупки за последний год важнее давних: вкус едет со временем.
+ * Вишлист — это «хочу сейчас», но абсолютные диапазоны не должны сталкиваться
+ * лбами: вишлист-позиций (497) почти вдвое больше, чем покупок (223), и если
+ * множитель источника задрать, он ещё и складывается с этим численным
+ * перевесом, забивая коллекцию почти полностью. Множитель держим маленьким
+ * (1.2), так что диапазоны покупок [1, 1.5] и вишлиста [1.2, 1.8]
+ * перекрываются: свежая покупка обгоняет старое желание, а свежее желание —
+ * старую покупку. Решающая ось — свежесть, а не источник сам по себе.
+ * Покупки/желания за последний год важнее давних: вкус едет со временем.
  */
 function weightOf(item: ProfileInput, now: Date): number {
   const ageDays = (now.getTime() - new Date(item.addedAt).getTime()) / 86_400_000;
   const recency = ageDays <= 365 ? 1.5 : ageDays <= 1095 ? 1.2 : 1;
-  return item.source === 'wishlist' ? recency * 1.6 : recency;
+  return item.source === 'wishlist' ? recency * 1.2 : recency;
 }
 
 function normalize(counts: Map<string, number>): Record<string, number> {
@@ -47,17 +57,32 @@ function normalize(counts: Map<string, number>): Record<string, number> {
   return result;
 }
 
+/** Тег → { суммарный вес, число релизов бакета, где тег встретился }. */
+interface TagStat {
+  weight: number;
+  releases: number;
+}
+
+/** Всё, что накапливается для одного бакета, в одной структуре. */
+interface BucketAccumulator {
+  tags: Map<string, TagStat>;
+  releaseCount: number;
+  weightSum: number;
+}
+
 export function buildProfile(items: ProfileInput[], options: BuildOptions): Profile {
   const minReleases = options.minReleases ?? 2;
 
-  const weighted = new Map<BucketId, Map<string, number>>();
-  const documents = new Map<BucketId, Map<string, number>>();
-  const stats = new Map<BucketId, { count: number; weight: number }>();
+  const accumulators = new Map<BucketId, BucketAccumulator>();
   for (const bucket of BUCKETS) {
-    weighted.set(bucket.id, new Map());
-    documents.set(bucket.id, new Map());
-    stats.set(bucket.id, { count: 0, weight: 0 });
+    accumulators.set(bucket.id, { tags: new Map(), releaseCount: 0, weightSum: 0 });
   }
+
+  // Лейблы считаем по всей коллекции сразу, не по бакетам, и это осознанный
+  // выбор, а не недосмотр: в этой сцене лейблы честно перекрывают
+  // crust/hardcore/death metal, самиздат вообще не даёт лейбла, а дробление
+  // и без того разреженных данных на три бакета оставило бы в каждом
+  // слишком мало, чтобы вес значил хоть что-то.
   const labels = new Map<string, number>();
 
   for (const item of items) {
@@ -70,32 +95,49 @@ export function buildProfile(items: ProfileInput[], options: BuildOptions): Prof
     // и т.п.) — он честно питает статистику каждого совпавшего, а не только
     // первого по порядку BUCKETS.
     for (const bucketId of bucketsOf(item.tags)) {
-      const stat = stats.get(bucketId)!;
-      stat.count += 1;
-      stat.weight += weight;
-      const tagWeights = weighted.get(bucketId)!;
-      const tagDocs = documents.get(bucketId)!;
+      const bucket = accumulators.get(bucketId)!;
+      bucket.releaseCount += 1;
+      bucket.weightSum += weight;
       for (const tag of new Set(item.tags.map((t) => t.toLowerCase()))) {
-        tagWeights.set(tag, (tagWeights.get(tag) ?? 0) + weight);
-        tagDocs.set(tag, (tagDocs.get(tag) ?? 0) + 1);
+        const stat = bucket.tags.get(tag) ?? { weight: 0, releases: 0 };
+        stat.weight += weight;
+        stat.releases += 1;
+        bucket.tags.set(tag, stat);
       }
     }
   }
 
   const buckets = {} as Record<BucketId, BucketProfile>;
   for (const bucket of BUCKETS) {
-    const tagWeights = weighted.get(bucket.id)!;
-    const tagDocs = documents.get(bucket.id)!;
-    const kept = new Map<string, number>();
-    for (const [tag, weight] of tagWeights) {
-      if ((tagDocs.get(tag) ?? 0) >= minReleases) kept.set(tag, weight);
+    const acc = accumulators.get(bucket.id)!;
+    const seedTags = new Set(bucket.seedTags.map((t) => t.toLowerCase()));
+
+    // Опорный тег бакета есть у каждого релиза бакета по построению (это и
+    // есть критерий bucketsOf) — он всегда оказался бы максимумом и съедал
+    // бы всю шкалу 0..1, вжимая по-настоящему характерные теги в ноль.
+    // Поэтому нормализуем к максимуму только НЕ-опорные теги, а опорный,
+    // если пережил порог minReleases, получает фиксированный вес 0.5:
+    // релиз с одним лишь общим тегом всё ещё проходит порог совпадения у
+    // скорера и попадает в рассмотрение, но не может перевесить релиз,
+    // совпавший со специфическим вкусом хозяина.
+    const nonSeedWeights = new Map<string, number>();
+    const keptSeedTags: string[] = [];
+    for (const [tag, stat] of acc.tags) {
+      if (stat.releases < minReleases) continue;
+      if (seedTags.has(tag)) {
+        keptSeedTags.push(tag);
+      } else {
+        nonSeedWeights.set(tag, stat.weight);
+      }
     }
-    const stat = stats.get(bucket.id)!;
+    const tags = normalize(nonSeedWeights);
+    for (const tag of keptSeedTags) tags[tag] = 0.5;
+
     buckets[bucket.id] = {
-      tags: normalize(kept),
+      tags,
       stopTags: [],
-      releaseCount: stat.count,
-      weightSum: Number(stat.weight.toFixed(3)),
+      releaseCount: acc.releaseCount,
+      weightSum: Number(acc.weightSum.toFixed(3)),
     };
   }
 
