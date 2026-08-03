@@ -37,9 +37,9 @@ export const BUCKETS: BucketDef[] = [
     id: 'hardcore-punk',
     channelTitle: 'HARDCORE PUNK DAILY',
     channelEnv: 'HARDCORE_PUNK_CHANNEL_ID',
-    // Не включаем голые 'hardcore' и 'punk' — на Bandcamp это теги-омонимы
-    // (electronic/uptempo hardcore, pop punk, skate punk и т.п.), они не
-    // маркируют жанр однозначно. См. buckets.test.ts и отчёт задачи 9.
+    // Голые 'hardcore' и 'punk' намеренно не включены: на Bandcamp это
+    // теги-омонимы (electronic/uptempo hardcore, pop punk, skate punk и
+    // т.п.) — релиз с таким тегом не обязательно хардкор-панк.
     seedTags: ['hardcore punk', 'powerviolence', 'raw punk', 'ukhc', 'youth crew', 'straight edge'],
   },
 ];
