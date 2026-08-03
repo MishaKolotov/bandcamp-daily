@@ -11,20 +11,35 @@ interface GridItem {
   type?: string;
 }
 
+/**
+ * &#39; — единственная числовая ссылка, которую Bandcamp реально использует
+ * для апострофа в этом атрибуте (проверено на фикстуре), поэтому она
+ * прописана явно как «именованная». &amp; должен разбираться последним —
+ * иначе `&amp;#39;` превратится в апостроф вместо буквального `&#39;`.
+ */
 function decodeEntities(value: string): string {
   return value
     .replaceAll('&quot;', '"')
     .replaceAll('&#39;', "'")
     .replaceAll('&lt;', '<')
     .replaceAll('&gt;', '>')
+    .replace(/&#x([0-9a-fA-F]+);/g, (_full, hex: string) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_full, dec: string) => String.fromCodePoint(Number(dec)))
     .replaceAll('&amp;', '&');
 }
 
 /**
- * Дискография лежит в атрибуте data-client-items у <ol id="music-grid">,
- * новые релизы идут первыми — проверено на фикстуре lavidaesunmus.bandcamp.com:
- * первая позиция в гриде датирована 26 Sep 2025, вторая — 22 Aug 2025, а
- * последняя — 01 Jan 2002 (даты сверены по ld+json реальных страниц релизов).
+ * Дискография лежит в атрибуте data-client-items, новые релизы идут
+ * первыми — проверено на фикстуре lavidaesunmus.bandcamp.com: первая
+ * позиция в гриде датирована 26 Sep 2025, вторая — 22 Aug 2025 (даты
+ * сверены по ld+json реальных страниц релизов). Дальше в хвост порядок не
+ * проверялся и не гарантируется — на него ничего не полагается, важен
+ * только фронт.
+ *
+ * Атрибут ищем без привязки к <ol id="music-grid">: это единственный
+ * data-client-items на странице, а завязка на порядок атрибутов внутри
+ * тега один раз уже чуть не сломала разбор, если бы Bandcamp переставил
+ * id и data-client-items местами.
  *
  * У групп с единственным релизом грида на странице вовсе нет — /music
  * редиректит на страницу альбома. Это нормальный случай, не ошибка:
@@ -36,7 +51,7 @@ function decodeEntities(value: string): string {
  * зацепки в логе.
  */
 export function parseMusicGrid(html: string, subdomain: string): BandRelease[] {
-  const match = /<ol[^>]*id="music-grid"[^>]*data-client-items="([^"]*)"/.exec(html);
+  const match = /data-client-items="([^"]*)"/.exec(html);
   if (!match?.[1]) return [];
   let items: GridItem[];
   try {
@@ -46,7 +61,11 @@ export function parseMusicGrid(html: string, subdomain: string): BandRelease[] {
     return [];
   }
   return items
-    .filter((item) => item.type === 'album' && item.page_url?.startsWith('/album/'))
+    .filter(
+      (item) =>
+        (item.type === 'album' && item.page_url?.startsWith('/album/')) ||
+        (item.type === 'track' && item.page_url?.startsWith('/track/')),
+    )
     .map((item) => ({
       url: `https://${subdomain}.bandcamp.com${item.page_url}`,
       title: item.title ?? '',
@@ -54,8 +73,10 @@ export function parseMusicGrid(html: string, subdomain: string): BandRelease[] {
 }
 
 /**
- * Свежие релизы группы. Берём только начало грида: дискографии бывают по
- * несколько сотен позиций, а нам нужны только новинки.
+ * Свежие релизы группы. Берём только начало грида: записи в нём не несут
+ * дат, так что остановиться раньше нечем — 8 это запас на случай, если
+ * дневной прогон однажды пропустили и вышедшие с тех пор релизы не должны
+ * потеряться за пределами среза.
  *
  * Сетевой сбой (сабдомен не резолвится, страница недоступна) — тихий и
  * ожидаемый: это гоняется по 166 подписок владельца, и то, что у одной из
