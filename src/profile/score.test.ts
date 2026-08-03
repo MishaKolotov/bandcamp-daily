@@ -109,6 +109,18 @@ test('отбраковка по штрафам всегда репортит tot
   assert.equal(result.total, 0);
 });
 
+test('сильное совпадение переживает большой штраф по опорному тегу', () => {
+  // crust + discharge worship = STRONG_MATCH (1.5). Опорный тег несёт
+  // каждый релиз бакета по построению, так что штраф за скипы копится
+  // именно на нём быстрее всего — 20 скипов без потолка дают 0.25*20=5,
+  // что зарежет даже идеальное совпадение в ноль. С потолком в 1 сильное
+  // совпадение должно пережить это (1.5 - 1 = 0.5 > 0).
+  const result = score(candidate({ tags: ['crust', 'discharge worship'] }), bucket, {
+    tagPenalties: { crust: 20 },
+  });
+  assert.equal(result.rejected, false);
+});
+
 test('в reasons попадают совпавшие теги, сильнейшие первыми', () => {
   const result = score(candidate({ tags: ['raw punk', 'crust', 'discharge worship'] }), bucket, {});
   // discharge worship (1) тяжелее опорного crust (0.5), который в новой форме профиля

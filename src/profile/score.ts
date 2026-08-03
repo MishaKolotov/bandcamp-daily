@@ -11,7 +11,12 @@ export interface ScoreContext {
 export interface ScoreResult {
   total: number;
   rejected: boolean;
-  /** Совпавшие теги по убыванию веса — из них строится строка «почему это тебе». */
+  /**
+   * Совпавшие теги по убыванию веса — из них строится строка «почему это
+   * тебе». Имеет смысл только при `rejected: false`; при отбраковке всегда
+   * `[]` — совпадения были, но релиз всё равно убит стоп-тегом или
+   * штрафами, и показывать их как «почему это тебе» было бы враньём.
+   */
   reasons: string[];
 }
 
@@ -41,6 +46,21 @@ const MATCH_FLOOR = 0.5;
  * не должен убивать его целиком — только срезать очки.
  */
 const STRONG_MATCH = 1.5;
+/**
+ * Потолок суммарного анти-фидбек штрафа по всем тегам кандидата.
+ *
+ * Без потолка штраф копится бесконечно и без затухания: 0.25 за каждый
+ * скип по каждому тегу. А опорный тег бакета несёт КАЖДЫЙ релиз бакета по
+ * построению (см. `bucketsOf`), так что каждый скип наращивает счётчик
+ * именно опорного тега — независимо от того, что владелец скипнул. При
+ * максимуме позитивного скора около 3 десятка скипов чего угодно из
+ * бакета доводят даже идеальное совпадение до нуля, и с этого момента
+ * канал отбраковывает всё подряд без шанса на восстановление — при паре
+ * скипов в неделю это месяц-два до тихой смерти канала. Потолок в 1
+ * оставляет штраф значимым: слабое совпадение он всё ещё топит целиком, но
+ * сильное совпадение переживает даже большой обвал по одному тегу.
+ */
+const FEEDBACK_PENALTY_CAP = 1;
 
 export function score(
   candidate: Candidate,
@@ -57,16 +77,23 @@ export function score(
 
   const stopHits = tags.filter((tag) => bucket.stopTags.includes(tag)).length;
   if (tagScore < MATCH_FLOOR || (stopHits > 0 && tagScore < STRONG_MATCH)) {
-    return { total: 0, rejected: true, reasons: matched.map((m) => m.tag) };
+    // reasons: [] — см. комментарий на поле в ScoreResult: при отбраковке
+    // совпавшие теги не годятся в «почему это тебе».
+    return { total: 0, rejected: true, reasons: [] };
   }
 
   const labelKey = candidate.label?.trim().toLowerCase() ?? '';
   const labelBonus = 0.7 * (context.labels?.[labelKey] ?? 0);
+  // alsoCollected у свежих кандидатов всегда 0 — Discover-ответ Bandcamp его
+  // не отдаёт, так что этот член фактически различает только внутри пула
+  // архивных кандидатов. Это безопасно, пока свежий и архивный пул ранжирует
+  // отдельно шаг отбора; если пулы когда-нибудь объединят в один общий
+  // рейтинг, свежие релизы окажутся молча обделены этим бонусом.
   const popularity = Math.min(0.5, 0.15 * Math.log10(1 + candidate.alsoCollected));
   const stopPenalty = 0.8 * stopHits;
-  const feedbackPenalty = tags.reduce(
-    (sum, tag) => sum + 0.25 * (context.tagPenalties?.[tag] ?? 0),
-    0,
+  const feedbackPenalty = Math.min(
+    FEEDBACK_PENALTY_CAP,
+    tags.reduce((sum, tag) => sum + 0.25 * (context.tagPenalties?.[tag] ?? 0), 0),
   );
 
   const total = tagScore + labelBonus + popularity - stopPenalty - feedbackPenalty;
@@ -78,6 +105,6 @@ export function score(
     // разбираться, что означает отрицательное число рядом с rejected: true.
     total: rejected ? 0 : Number(total.toFixed(3)),
     rejected,
-    reasons: matched.map((entry) => entry.tag),
+    reasons: rejected ? [] : matched.map((entry) => entry.tag),
   };
 }
