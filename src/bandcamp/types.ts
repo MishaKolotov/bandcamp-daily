@@ -8,7 +8,11 @@ export interface FanItem {
   title: string;
   artist: string;
   url: string;
-  /** Субдомен Bandcamp — он же лейбл, если релиз издан не самим артистом. */
+  /**
+   * Субдомен Bandcamp (URL-слаг вида `lavidaesunmus`). Это НЕ то же самое, что
+   * `AlbumDetails.label` — там человекочитаемое имя лейбла со страницы релиза.
+   * Веса лейблов в профиле считаются по имени, а не по субдомену.
+   */
   subdomain: string;
   alsoCollected: number;
   /** ISO-дата добавления в коллекцию/вишлист. */
@@ -34,16 +38,13 @@ export interface BandRef {
   location: string | null;
 }
 
-/** Релиз-претендент на пост, уже с тегами и датой. */
-export interface Candidate {
+/**
+ * Релиз-претендент на пост: то же, что и страница релиза, плюс откуда он взялся.
+ * Наследование от AlbumDetails не даёт полям разъехаться при правках.
+ */
+export interface Candidate extends AlbumDetails {
   itemId: number;
   url: string;
-  title: string;
-  artist: string;
-  label: string | null;
-  tags: string[];
-  releasedAt: string | null;
-  artUrl: string | null;
   alsoCollected: number;
   origin: 'fresh' | 'archive';
   /** Для архивных — суммарный вес проголосовавших соседей. */
