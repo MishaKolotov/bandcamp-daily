@@ -75,35 +75,51 @@ function truncatePlain(text: string, maxLen: number): string {
 }
 
 /**
- * Собирает жирный заголовок «<b>артист</b> — название», подгоняя его под
- * `budget` символов итогового HTML.
+ * Обрезает сырой текст и экранирует его так, что результат гарантированно
+ * укладывается в `budget` символов HTML.
  *
  * Экранирование выполняется ПОСЛЕ обрезки сырого текста, а не наоборот —
  * поэтому сущности (&amp;/&lt;/&gt;) никогда не режутся пополам: мы обрезаем
- * чистый текст, а затем целиком превращаем спецсимволы в целые сущности.
- * Тег <b>...</b> добавляется программно вокруг готового содержимого, так что
- * и его невозможно разорвать. Если экранирование раздувает обрезанный
- * хвост (например, заголовок из одних '<', каждый из которых после
- * экранирования занимает 4 символа вместо одного) так, что результат всё
- * ещё не укладывается в бюджет — хвост укорачивается ещё, посимвольно, пока
- * не влезет.
+ * чистый текст, а затем целиком превращаем спецсимволы в целые сущности. Но
+ * экранирование раздувает текст (например, хвост из одних '<' — каждый
+ * символ после экранирования занимает 4 места вместо одного), поэтому
+ * обрезка по бюджету СЫРЫХ символов не гарантирует, что ЭКРАНИРОВАННЫЙ
+ * результат в него влезет. Единственный надёжный способ — переспросить
+ * после экранирования и, если результат всё ещё длиннее бюджета, укоротить
+ * сырой текст ещё на символ и повторить. Худший случай — O(n) итераций по
+ * длине текста (не больше 1024 для длины подписи), не проблема для строки
+ * форматирования, вызываемой один раз на кандидата.
+ */
+function fitEscaped(text: string, budget: number): string {
+  const safeBudget = Math.max(budget, 0);
+  let plainLen = Math.min(text.length, safeBudget);
+  let html = escapeHtml(truncatePlain(text, plainLen));
+  while (html.length > safeBudget && plainLen > 0) {
+    plainLen -= 1;
+    html = escapeHtml(truncatePlain(text, plainLen));
+  }
+  return html;
+}
+
+/**
+ * Собирает жирный заголовок «<b>артист</b> — название», подгоняя его под
+ * `budget` символов итогового HTML. Тег <b>...</b> добавляется программно
+ * вокруг уже готового (обрезанного и экранированного) содержимого, так что
+ * его невозможно разорвать — обрезке подвергается только то, что внутри.
  */
 function buildHeader(artist: string, title: string, budget: number): string {
   const safeBudget = Math.max(budget, 0);
   const prefix = `<b>${escapeHtml(artist)}</b> — `;
   if (prefix.length > safeBudget) {
     // Экстремальный случай: даже одному имени артиста не хватает места.
+    // Та же процедура «обрезать → экранировать → перепроверить», что и для
+    // названия — иначе раздутие от экранирования могло бы протолкнуть
+    // результат обратно за пределы бюджета.
     const artistBudget = Math.max(safeBudget - '<b></b>'.length, 0);
-    return `<b>${escapeHtml(truncatePlain(artist, artistBudget))}</b>`;
+    return `<b>${fitEscaped(artist, artistBudget)}</b>`;
   }
   const remaining = safeBudget - prefix.length;
-  let plainLen = Math.min(title.length, remaining);
-  let titleHtml = escapeHtml(truncatePlain(title, plainLen));
-  while (titleHtml.length > remaining && plainLen > 0) {
-    plainLen -= 1;
-    titleHtml = escapeHtml(truncatePlain(title, plainLen));
-  }
-  return `${prefix}${titleHtml}`;
+  return `${prefix}${fitEscaped(title, remaining)}`;
 }
 
 /**

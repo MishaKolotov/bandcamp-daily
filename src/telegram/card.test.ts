@@ -115,3 +115,91 @@ test('когда бюджета хватает ровно на артиста, �
     `имя артиста обрезалось, хотя бюджета хватало ровно на него: ${card.caption.slice(0, 40)}`,
   );
 });
+
+// --- Найдено ревью: ветка «даже артисту не хватает места» не перепроверяет
+// длину после экранирования, в отличие от ветки названия. ---
+
+test('ветка «артисту не хватает места» тоже не вылезает за лимит, даже когда экранирование раздувает текст', () => {
+  // Длинный URL сжимает бюджет заголовка до значения меньше длины
+  // экранированного имени артиста — это форсирует раннюю ветку в
+  // buildHeader. Артист состоит из символов, которые при экранировании
+  // впятеро/вчетверо раздуваются ('<' -> '&lt;', 4x), так что наивная
+  // обрезка сырого текста по бюджету символов, применённая ДО
+  // экранирования, даёт результат, который после экранирования снова не
+  // укладывается в бюджет.
+  const url = `https://x.test/${'a'.repeat(900 - 'https://x.test/'.length)}`;
+  assert.equal(url.length, 900);
+  const c: Candidate = { ...candidate, url, artist: '<'.repeat(300), title: 'T', tags: [], label: null };
+  const card = buildCard(c, 'crust', []);
+  assert.ok(
+    card.caption.length <= 1024,
+    `подпись длиной ${card.caption.length} превышает лимит Telegram в 1024 символа`,
+  );
+});
+
+// --- Общий guard-тест по таблице агрессивных входов ---
+
+const adversarialCases: Array<{ name: string; overrides: Partial<Candidate> }> = [
+  { name: 'очень длинное название', overrides: { title: 'T'.repeat(2000) } },
+  { name: 'очень длинное имя артиста', overrides: { artist: 'A'.repeat(2000) } },
+  {
+    name: 'экранируемые символы вперемешку в артисте и названии',
+    overrides: { artist: '<<>>&&'.repeat(200), title: '&<>'.repeat(200) },
+  },
+  {
+    name: 'эмодзи — суррогатные пары',
+    overrides: { title: '🔥💀🎸'.repeat(200), artist: '🤘'.repeat(100) },
+  },
+  {
+    name: 'RTL-текст (арабский)',
+    overrides: { title: 'أبجدية عربية طويلة جدا جدا جدا '.repeat(60), artist: 'فرقة موسيقية' },
+  },
+  { name: 'очень длинный URL', overrides: { url: `https://x.test/${'a'.repeat(950)}` } },
+  {
+    name: 'очень много тегов',
+    overrides: { tags: Array.from({ length: 300 }, (_, i) => `тег-${i}-<>&`) },
+  },
+  {
+    name: 'всё сразу — длинный артист и название с экранируемыми символами, эмодзи, длинный URL, много тегов',
+    overrides: {
+      title: `🔥<A&B>${'x'.repeat(400)}`,
+      artist: `فرقة<&>${'y'.repeat(200)}`,
+      url: `https://x.test/${'z'.repeat(600)}`,
+      tags: Array.from({ length: 100 }, (_, i) => `<t${i}>&`),
+      label: '<Label & Co>'.repeat(50),
+    },
+  },
+];
+
+test('на наборе агрессивных входов подпись всегда в лимите, с парой сбалансированных <b> и без обрубленных сущностей', () => {
+  for (const { name, overrides } of adversarialCases) {
+    const c: Candidate = { ...candidate, ...overrides };
+    const card = buildCard(c, 'crust', ['crust', 'd-beat']);
+
+    assert.ok(
+      card.caption.length <= 1024,
+      `[${name}] длина подписи ${card.caption.length} > 1024`,
+    );
+
+    const opens = (card.caption.match(/<b>/g) ?? []).length;
+    const closes = (card.caption.match(/<\/b>/g) ?? []).length;
+    assert.equal(opens, closes, `[${name}] несбалансированные <b>/</b>: ${opens} против ${closes}`);
+    assert.ok(opens <= 1, `[${name}] найдено больше одной пары <b>`);
+
+    const withoutBoldTags = card.caption.replace(/<\/?b>/g, '');
+    assert.ok(!withoutBoldTags.includes('<'), `[${name}] необработанный символ < вне <b>/</b>`);
+    assert.ok(!withoutBoldTags.includes('>'), `[${name}] необработанный символ > вне <b>/</b>`);
+    assert.ok(
+      !/&(?!amp;|lt;|gt;)/.test(card.caption),
+      `[${name}] обрубленная HTML-сущность (одинокий "&")`,
+    );
+
+    // Каждая кнопка тоже должна укладываться в лимит Telegram на callback_data.
+    for (const button of card.keyboard.inline_keyboard.flat()) {
+      assert.ok(
+        Buffer.byteLength(button.callback_data, 'utf8') <= 64,
+        `[${name}] callback_data ${button.callback_data} длиннее 64 байт`,
+      );
+    }
+  }
+});
