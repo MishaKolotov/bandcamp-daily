@@ -102,9 +102,7 @@ daily (ежедневно 09:00 МСК)
 |---|---|
 | `data/profile.json` | веса тегов, лейблов, стран, стоп-теги |
 | `data/neighbors.json` | соседи по вкусу и их вес |
-| `data/seen.json` | всё, что уже показывалось |
-| `data/posted.json` | что опубликовано, куда и когда |
-| `data/feedback.json` | скипы и их влияние на скор |
+| `data/state.json` | показанное, опубликованное, скипы и их влияние на скор, offset Telegram |
 
 Секреты (`TELEGRAM_BOT_TOKEN`, `OWNER_CHAT_ID`, три `CHANNEL_ID`) — в GitHub Secrets, в репозитории отсутствуют.
 
