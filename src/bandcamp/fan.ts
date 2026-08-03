@@ -5,7 +5,19 @@ const API = 'https://bandcamp.com/api/fancollection/1';
 /** Токен «от начала времён»: с ним первая страница отдаёт самые свежие позиции. */
 const START_TOKEN = '9999999999::a::';
 const PAGE_SIZE = 100;
-const MAX_PAGES = 60;
+/**
+ * Предел страниц по умолчанию — с запасом под коллекцию владельца (223
+ * релиза = 3 страницы по 100). Вызывающий код может переопределить его через
+ * options.maxPages: соседский граф ходит за коллекциями чужих фанатов
+ * произвольного размера и должен явно ограничивать свою стоимость, а не
+ * молча наследовать число, подобранное под владельца.
+ */
+export const MAX_PAGES = 60;
+
+export interface FanFetchOptions {
+  /** Переопределяет MAX_PAGES для одного вызова. */
+  maxPages?: number;
+}
 
 interface RawItem {
   item_id: number;
@@ -20,12 +32,6 @@ interface RawItem {
   token?: string;
 }
 
-interface ItemsPage {
-  items?: RawItem[];
-  followeers?: RawBand[];
-  more_available?: boolean;
-}
-
 interface RawBand {
   band_id: number;
   name?: string;
@@ -34,49 +40,96 @@ interface RawBand {
   token?: string;
 }
 
+interface ItemsResponse {
+  items?: RawItem[];
+  more_available?: boolean;
+}
+
+interface BandsResponse {
+  followeers?: RawBand[];
+  more_available?: boolean;
+}
+
+/** Каждый элемент коллекции/вишлиста/подписок несёт курсор для следующей страницы. */
+interface TokenBearing {
+  token?: string;
+}
+
+/**
+ * ISO-дата добавления. Отсутствующее поле — тихо откатываемся на
+ * "1970-01-01" (это нормально: не у всех эндпоинтов есть `added`).
+ * Присутствующее, но неразбираемое значение — не нормально: это значит,
+ * что Bandcamp сменил формат даты, и это должно быть видно в логе, а не
+ * тихо съедаться тем же фолбэком.
+ */
 function toIsoDate(raw: string | undefined): string {
-  const parsed = new Date(raw ?? '');
-  return Number.isNaN(parsed.getTime()) ? '1970-01-01' : parsed.toISOString().slice(0, 10);
+  if (!raw) return '1970-01-01';
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    console.warn(`не удалось разобрать дату добавления "${raw}" — использую 1970-01-01`);
+    return '1970-01-01';
+  }
+  return parsed.toISOString().slice(0, 10);
 }
 
 /**
  * Курсор для следующей страницы — это поле `token` у ПОСЛЕДНЕГО элемента
  * текущей страницы, а не `last_token` в теле ответа.
  *
- * Проверено вживую на fan_id 7566215 (223 релиза в коллекции по данным самого
- * Bandcamp): если гонять туда-сюда `last_token` из тела ответа, страницы
- * перекрываются примерно на 80% и коллекция в 223 позиции распухает до 783
- * с кучей дублей — `last_token` там оказался вообще не курсором следующей
- * страницы, а отдельным «снимком состояния всей коллекции» (тем же самым
- * значением, что зашито в HTML профиля fan.collection_data.last_token).
- * С курсором из `items[].token` пагинация останавливается ровно на 223/497/166
- * уникальных позициях без единого дубля — и это совпадает с cчётчиками на
- * самой странице профиля (`collection_count`, `wishlist_data.item_count`,
- * `fan_stats.following_bands_count`).
+ * Проверено вживую на fan_id 7566215: на `collection_items` при count=100
+ * `last_token` из тела ответа отстаёт и продвигается примерно на 20 позиций
+ * за запрос вместо ~100 — страницы перекрываются почти на 80%, и 223
+ * уникальных релиза раздуваются до 783 сырых строк с дублями. На
+ * `wishlist_items` и `following_bands` `last_token` в теле ответа совпадал
+ * с токеном последнего элемента и не ломался. Но раз один из трёх
+ * однотипных эндпоинтов при одинаковом вызове врёт, курсор берётся из
+ * `items[].token` / `followeers[].token` единообразно везде, а не выборочно
+ * там, где `last_token` подтверждённо надёжен.
  */
-function nextToken(entries: { token?: string }[]): string | undefined {
+function nextToken(entries: TokenBearing[]): string | undefined {
   return entries[entries.length - 1]?.token;
 }
 
-async function pages(
+/**
+ * Постранично обходит эндпоинт и возвращает уже плоский список элементов.
+ *
+ * Если лимит страниц исчерпан, а Bandcamp всё ещё отвечал more_available —
+ * список обрезан не потому, что закончился, а потому что мы перестали
+ * спрашивать. Молчать об этом опасно: соседский граф вызывает это для
+ * десятков чужих фанатов произвольного размера коллекции, и для плодовитых
+ * коллекционеров близость вкуса тогда посчитается по смещённому «последние
+ * N» срезу без единого признака этого в данных.
+ */
+async function paginate<TEntry extends TokenBearing, TResponse extends { more_available?: boolean }>(
   http: Http,
   endpoint: string,
   fanId: number,
-  extract: (page: ItemsPage) => { token?: string }[],
-): Promise<ItemsPage[]> {
-  const result: ItemsPage[] = [];
+  extract: (page: TResponse) => TEntry[],
+  maxPages: number,
+): Promise<TEntry[]> {
+  const result: TEntry[] = [];
   let token = START_TOKEN;
-  for (let page = 0; page < MAX_PAGES; page += 1) {
-    const body = await http.postJson<ItemsPage>(`${API}/${endpoint}`, {
+  let truncated = true;
+  for (let page = 0; page < maxPages; page += 1) {
+    const body = await http.postJson<TResponse>(`${API}/${endpoint}`, {
       fan_id: fanId,
       older_than_token: token,
       count: PAGE_SIZE,
     });
-    result.push(body);
-    const next = nextToken(extract(body));
+    const entries = extract(body);
+    result.push(...entries);
+    const next = nextToken(entries);
     // Bandcamp иногда повторяет тот же токен — это конец, а не бесконечность.
-    if (!body.more_available || !next || next === token) break;
+    if (!body.more_available || !next || next === token) {
+      truncated = false;
+      break;
+    }
     token = next;
+  }
+  if (truncated) {
+    console.warn(
+      `фан ${fanId}: пагинация ${endpoint} оборвана лимитом ${maxPages} страниц, данные могут быть неполными`,
+    );
   }
   return result;
 }
@@ -85,11 +138,16 @@ export async function fetchFanItems(
   http: Http,
   fanId: number,
   source: 'collection' | 'wishlist',
+  options: FanFetchOptions = {},
 ): Promise<FanItem[]> {
   const endpoint = source === 'collection' ? 'collection_items' : 'wishlist_items';
-  const raw = (
-    await pages(http, endpoint, fanId, (page) => page.items ?? [])
-  ).flatMap((page) => page.items ?? []);
+  const raw = await paginate<RawItem, ItemsResponse>(
+    http,
+    endpoint,
+    fanId,
+    (page) => page.items ?? [],
+    options.maxPages ?? MAX_PAGES,
+  );
   return raw.map((item) => ({
     itemId: item.item_id,
     bandId: item.band_id,
@@ -103,10 +161,18 @@ export async function fetchFanItems(
   }));
 }
 
-export async function fetchFollowedBands(http: Http, fanId: number): Promise<BandRef[]> {
-  const raw = (
-    await pages(http, 'following_bands', fanId, (page) => page.followeers ?? [])
-  ).flatMap((page) => page.followeers ?? []);
+export async function fetchFollowedBands(
+  http: Http,
+  fanId: number,
+  options: FanFetchOptions = {},
+): Promise<BandRef[]> {
+  const raw = await paginate<RawBand, BandsResponse>(
+    http,
+    'following_bands',
+    fanId,
+    (page) => page.followeers ?? [],
+    options.maxPages ?? MAX_PAGES,
+  );
   return raw.map((band) => ({
     bandId: band.band_id,
     name: band.name ?? '',
