@@ -40,7 +40,12 @@ export const BUCKETS: BucketDef[] = [
     // Голые 'hardcore' и 'punk' намеренно не включены: на Bandcamp это
     // теги-омонимы (electronic/uptempo hardcore, pop punk, skate punk и
     // т.п.) — релиз с таким тегом не обязательно хардкор-панк.
-    seedTags: ['hardcore punk', 'powerviolence', 'raw punk', 'ukhc', 'youth crew', 'straight edge'],
+    // Список намеренно короткий: 'youth crew' и 'straight edge' сюда не
+    // входят — это сужение до одной американской линии хардкора, а
+    // 'straight edge' вдобавок теговый омоним (пересекается с metalcore).
+    // Не дополнять "для ровного счёта" — недостающее вытянут derived-веса
+    // из данных, а хозяин всё равно проверяет профиль руками.
+    seedTags: ['hardcore punk', 'hardcore-punk', 'powerviolence', 'raw punk', 'ukhc'],
   },
 ];
 
