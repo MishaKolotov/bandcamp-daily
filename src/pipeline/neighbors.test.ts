@@ -94,31 +94,67 @@ test('соседи с нулевым пересечением отбрасыва
   assert.deepEqual(neighbors, []);
 });
 
-test('вес — доля пересечения от СВОЕЙ коллекции, устойчивая к усечению чужой', async () => {
-  // Овнер: 4 релиза. Сосед 10 отдаёт полную коллекцию (2 релиза, оба общие).
-  // Сосед 20 отдаёт коллекцию, ОБРЕЗАННУЮ лимитом страниц: его настоящая
-  // коллекция намного больше, но collectionOf вернул только 1 позицию,
-  // которая совпадает с моей. Старая формула overlap/min(theirs, mine)
-  // дала бы соседу 20 вес 1/1 = 1.0 — выше, чем у соседа 10 (2/2 = 1.0, тоже
-  // максимум, но это совпадение); возьмём случай, где обрезка реально
-  // завышает: сосед 20 вернул 1 релиз из своих (обрезано), он совпадает —
-  // min(1, 4) = 1 → 1/1 = 1.0, притом что настоящее пересечение с его
-  // полной коллекцией могло быть той же единицей из сотен позиций.
-  // Знаменатель на основе mineIds.size (4) даёт соседу 20 вес 1/4 = 0.25 —
-  // не зависящий от того, сколько страниц его коллекции удалось прочитать.
+test('усечение большой чужой коллекции не искажает вес — знаменатель уже упёрся в размер владельца', async () => {
+  // Овнер: 4 релиза (mineIds.size = 4). У соседа 20 пересечение — одни и те
+  // же 2 релиза в обоих прогонах; разница только в том, сколько его
+  // коллекции успели прочитать до обрыва лимитом страниц: 50 позиций или
+  // гипотетически полные 5000. В обоих случаях theirs.length на порядки
+  // больше mineIds.size, так что Math.min(theirs.length, mineIds.size) уже
+  // равен mineIds.size независимо от того, где именно чужую коллекцию
+  // оборвали — truncation здесь просто не долетает до знаменателя.
+  const filler = (from: number, count: number) => Array.from({ length: count }, (_, i) => item(from + i));
+
+  const weightForTheirsLength = async (theirsLength: number): Promise<number | undefined> => {
+    const deps: NeighborDeps = {
+      collectors: async () => [20],
+      collectionOf: async () => [item(1), item(2), ...filler(1000, theirsLength - 2)],
+    };
+    const [neighbor] = await computeNeighbors(deps, {
+      ownerFanId: 999,
+      mine: [item(1), item(2), item(3), item(4)],
+      seedCount: 4,
+      candidateLimit: 10,
+      neighborLimit: 10,
+    });
+    return neighbor?.weight;
+  };
+
+  assert.equal(await weightForTheirsLength(50), 0.5);
+  assert.equal(await weightForTheirsLength(5000), 0.5);
+});
+
+test('родственная душа с маленькой коллекцией обгоняет всеядного с тем же overlap в огромной', async () => {
+  // Оба соседа пересекаются с владельцем ровно по 50 релизам. У соседа 10
+  // коллекция маленькая (60 позиций) — эти 50 общих релизов заметная её
+  // часть, родственная душа. У соседа 20 коллекция огромная (1000 позиций)
+  // — те же 50 общих релизов растворены среди остального: всеядный
+  // коллекционер, чьи прочие покупки ни о чём не говорят. Мера близости
+  // обязана различать их, а не считать одинаково близкими только потому,
+  // что абсолютное число общих релизов совпало.
+  const overlapping = Array.from({ length: 50 }, (_, i) => item(i + 1));
+  const mine = Array.from({ length: 100 }, (_, i) => item(i + 1));
+
   const deps: NeighborDeps = {
     collectors: async () => [10, 20],
-    collectionOf: async (fanId) => (fanId === 10 ? [item(1), item(2)] : [item(1)]),
+    collectionOf: async (fanId) =>
+      fanId === 10
+        ? [...overlapping, ...Array.from({ length: 10 }, (_, i) => item(2000 + i))]
+        : [...overlapping, ...Array.from({ length: 950 }, (_, i) => item(3000 + i))],
   };
+
   const neighbors = await computeNeighbors(deps, {
     ownerFanId: 999,
-    mine: [item(1), item(2), item(3), item(4)],
-    seedCount: 4,
+    mine,
+    seedCount: 100,
     candidateLimit: 10,
     neighborLimit: 10,
   });
-  const n20 = neighbors.find((n) => n.fanId === 20);
-  assert.equal(n20?.weight, 0.25);
+
+  const kindred = neighbors.find((n) => n.fanId === 10);
+  const omnivore = neighbors.find((n) => n.fanId === 20);
+  assert.equal(kindred?.weight, 0.8333);
+  assert.equal(omnivore?.weight, 0.5);
+  assert.ok(kindred!.weight > omnivore!.weight);
 });
 
 test('мёртвый аккаунт не роняет весь прогон — остальные соседи сохраняются', async () => {
