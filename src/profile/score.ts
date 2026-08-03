@@ -70,9 +70,14 @@ export function score(
   );
 
   const total = tagScore + labelBonus + popularity - stopPenalty - feedbackPenalty;
+  const rejected = total <= 0;
   return {
-    total: Number(total.toFixed(3)),
-    rejected: total <= 0,
+    // Обе ветки отбраковки репортят total: 0 — форма результата не должна
+    // зависеть от того, КАКОЙ порог сработал (совпадение тегов или штрафы
+    // увели итог в минус). Иначе читатель/логгер результата вынужден сам
+    // разбираться, что означает отрицательное число рядом с rejected: true.
+    total: rejected ? 0 : Number(total.toFixed(3)),
+    rejected,
     reasons: matched.map((entry) => entry.tag),
   };
 }

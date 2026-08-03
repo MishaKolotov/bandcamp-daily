@@ -76,8 +76,17 @@ test('знакомый лейбл поднимает скор', () => {
 });
 
 test('популярность добавляет мало и не перебивает совпадение по тегам', () => {
-  const hype = score(candidate({ tags: ['raw punk'], alsoCollected: 5000 }), bucket, {});
+  // Оба кандидата должны сами пройти порог совпадения тегов, иначе тест
+  // проверяет отбраковку по полу, а не популярность: hype несёт только
+  // опорный тег (0.5 — впритык проходит порог) плюс запредельный хайп,
+  // match несёт опорный и топовый не-опорный тег без единого "коллекта".
+  const hype = score(candidate({ tags: ['crust'], alsoCollected: 1_000_000_000 }), bucket, {});
   const match = score(candidate({ tags: ['crust', 'discharge worship'] }), bucket, {});
+  assert.equal(hype.rejected, false);
+  // Популярность капается на 0.5 (см. Math.min в score.ts): даже миллиард
+  // "also collected" не даёт больше tagScore(0.5) + 0.5 = 1 — если бы
+  // коэффициент или потолок разъехались, эта проверка бы поймала.
+  assert.equal(hype.total, 1);
   assert.ok(match.total > hype.total);
 });
 
@@ -87,6 +96,17 @@ test('отскипанные ранее теги штрафуются', () => {
     tagPenalties: { crust: 2 },
   });
   assert.ok(penalized.total < plain.total);
+});
+
+test('отбраковка по штрафам всегда репортит total: 0, а не отрицательное число', () => {
+  // crust даёт tagScore 0.5, штраф за отскип с весом 10 срезает
+  // 0.25 * 10 = 2.5 очка — итог уходит в минус (-2), но total должен
+  // репортиться ровно как 0, той же формой, что и отбраковка по полу.
+  const result = score(candidate({ tags: ['crust'] }), bucket, {
+    tagPenalties: { crust: 10 },
+  });
+  assert.equal(result.rejected, true);
+  assert.equal(result.total, 0);
 });
 
 test('в reasons попадают совпавшие теги, сильнейшие первыми', () => {
