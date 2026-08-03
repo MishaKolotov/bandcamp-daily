@@ -1,8 +1,22 @@
 export interface StopTagInput {
   /** Тег → сколько раз встретился среди релизов тег-хаба. */
   hubTagCounts: Record<string, number>;
-  /** Все теги, встречающиеся в коллекции и вишлисте владельца. */
-  ownedTags: Set<string>;
+  /**
+   * Тег → на скольких релизах коллекции и вишлиста владельца встретился.
+   *
+   * Раньше здесь было множество (`Set<string>`) — просто «есть тег хоть на
+   * одном релизе». Живой прогон (2026-08, 720 релизов коллекции+вишлиста,
+   * из них 91 не задевает ни один бакет) показал цену: с широкой
+   * коллекцией владелец задевает почти каждый расхожий тег хотя бы раз —
+   * залётный кроссовер, опечатка тегирования на Bandcamp, тег-имя лейбла
+   * или артиста, вообще встретившийся один раз (в data/profile.json таких
+   * полно: 'iron lung records', 'd4mtlabsinc', 'toxic state records' —
+   * очевидно не жанр, а тег с единственного релиза этого лейбла). Единственное
+   * вхождение — не вкус, а шум, и раньше оно иммунизировало тег навсегда:
+   * стоп-листы были пустыми во всех бакетах разом. Теперь тег считается
+   * «своим» только начиная с `minOwnedCount` вхождений — см. там же.
+   */
+  ownedTagCounts: Record<string, number>;
   /**
    * Seed-теги бакета, для которого сейчас выводится стоп-лист (см.
    * buckets.ts). Обязателен: без него легко забыть передать защиту и
@@ -34,13 +48,28 @@ export interface StopTagInput {
    * релизов; доля 0.2 при такой выборке — это порядка 12–36 совпадений.
    */
   minHubShare?: number;
+  /**
+   * Сколько раз тег должен встретиться в коллекции/вишлисте владельца
+   * (`ownedTagCounts`), чтобы считаться «своим», а не шумом одного
+   * случайного релиза.
+   *
+   * 2 — та же граница «шум vs сигнал», что `minReleases` в `buildProfile`
+   * (build.ts, порог по умолчанию тоже 2): один релиз статистически ничего
+   * не доказывает, а нижняя граница задаётся ЭТОЙ функцией, а не подгоняется
+   * снизу до первого непустого результата — понижать её дальше ради того,
+   * чтобы стоп-лист вообще не пустовал, значит начать штрафовать жанр,
+   * которого владелец коснулся один раз случайно, но который ему может
+   * искренне нравиться (а вот два самостоятельных приобретения — уже вряд
+   * ли случайность).
+   */
+  minOwnedCount?: number;
   limit?: number;
 }
 
 /**
  * Стоп-тег = встречается в хабе часто (относительно размера выборки), а у
- * владельца не встречается ни разу. Такие теги маркируют соседний жанр,
- * который владелец не слушает.
+ * владельца нет реальных свидетельств владения (см. `minOwnedCount`). Такие
+ * теги маркируют соседний жанр, который владелец не слушает.
  *
  * Seed-теги переданного бакета в стоп-лист не попадают никогда: это и есть
  * жанр канала, а не соседний — то, что владелец купил мало релизов с
@@ -58,13 +87,18 @@ export interface StopTagInput {
 export function deriveStopTags(input: StopTagInput): string[] {
   const minHubCount = input.minHubCount ?? 5;
   const minHubShare = input.minHubShare ?? 0.2;
+  const minOwnedCount = input.minOwnedCount ?? 2;
   const limit = input.limit ?? 40;
   const threshold = Math.max(minHubCount, minHubShare * input.releasesSampled);
-  const ownedLower = new Set([...input.ownedTags].map((tag) => tag.toLowerCase()));
+  const ownedCounts = new Map<string, number>();
+  for (const [tag, count] of Object.entries(input.ownedTagCounts)) {
+    const key = tag.toLowerCase();
+    ownedCounts.set(key, (ownedCounts.get(key) ?? 0) + count);
+  }
   const seedLower = new Set(input.seedTags.map((tag) => tag.toLowerCase()));
   return Object.entries(input.hubTagCounts)
     .filter(([, count]) => count >= threshold)
-    .filter(([tag]) => !ownedLower.has(tag.toLowerCase()))
+    .filter(([tag]) => (ownedCounts.get(tag.toLowerCase()) ?? 0) < minOwnedCount)
     .filter(([tag]) => !seedLower.has(tag.toLowerCase()))
     .sort((a, b) => b[1] - a[1])
     .slice(0, limit)

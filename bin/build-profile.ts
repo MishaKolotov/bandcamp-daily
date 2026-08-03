@@ -85,7 +85,13 @@ const fanItems = [...collection, ...wishlist];
 
 console.log('Читаю страницы релизов (первый раз долго, дальше — из дискового кэша .cache/)...');
 const inputs: ProfileInput[] = [];
-const ownedTags = new Set<string>();
+/**
+ * Тег → на скольких релизах коллекции+вишлиста встретился — вход для
+ * порога владения в deriveStopTags (см. комментарий у `ownedTagCounts` в
+ * stop-tags.ts: раньше здесь было множество, и единственное вхождение
+ * иммунизировало тег навсегда, из-за чего стоп-листы были пустыми везде).
+ */
+const ownedTagCounts: Record<string, number> = {};
 let unreadable = 0;
 
 for (const [index, item] of fanItems.entries()) {
@@ -94,7 +100,9 @@ for (const [index, item] of fanItems.entries()) {
     unreadable += 1;
     continue;
   }
-  for (const tag of album.tags) ownedTags.add(tag);
+  for (const tag of new Set(album.tags)) {
+    ownedTagCounts[tag] = (ownedTagCounts[tag] ?? 0) + 1;
+  }
   inputs.push({
     tags: album.tags,
     label: album.label,
@@ -131,19 +139,21 @@ for (const bucket of BUCKETS) {
     }
   }
 
-  // minHubShare/minHubCount умышленно не переданы — берём дефолты
-  // deriveStopTags (0.2 доли, пол 5). Смена источника хаб-тегов (см. выше)
-  // не меняет ни число хабов на бакет (HUB_TAGS_PER_BUCKET всё те же 3),
-  // ни размер каждого (HUB_SAMPLE_SIZE всё те же 60) — пул как был
-  // 60-180 сэмплированных релизов, так и остался, а именно под этот
-  // диапазон калибровался порог 0.2 (см. комментарий у minHubShare в
-  // stop-tags.ts). Пустые стоп-листы живого прогона были следствием
-  // мусорного ВХОДА (мега-хаб 'punk'/'metal' или город вместо жанра), а
-  // не порога — так что чиним вход (hubSampleTags), а не занижаем порог,
-  // подгоняя его под то, чтобы что-нибудь да выпало.
+  // minHubShare/minHubCount/minOwnedCount умышленно не переданы — берём
+  // дефолты deriveStopTags (0.2 доли, пол 5, владение с 2 вхождений). Смена
+  // источника хаб-тегов (см. выше) не меняет ни число хабов на бакет
+  // (HUB_TAGS_PER_BUCKET всё те же 3), ни размер каждого (HUB_SAMPLE_SIZE
+  // всё те же 60) — пул как был 60-180 сэмплированных релизов, так и
+  // остался, а именно под этот диапазон калибровался порог 0.2 (см.
+  // комментарий у minHubShare в stop-tags.ts). Пустые стоп-листы живого
+  // прогона были следствием ДВУХ независимых причин — мусорного ВХОДА
+  // хабов (чинит hubSampleTags, уже сделано) и слишком мягкого теста
+  // владения, где одно случайное вхождение тега иммунизировало его
+  // навсегда (чинит minOwnedCount в deriveStopTags) — а не порога самой
+  // частоты в хабе, так что его не трогаем.
   profile.buckets[bucket.id].stopTags = deriveStopTags({
     hubTagCounts,
-    ownedTags,
+    ownedTagCounts,
     seedTags: bucket.seedTags,
     releasesSampled,
   });

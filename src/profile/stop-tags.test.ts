@@ -5,7 +5,7 @@ import { deriveStopTags } from './stop-tags.ts';
 test('частый в хабе и отсутствующий у владельца тег становится стоп-тегом', () => {
   const stop = deriveStopTags({
     hubTagCounts: { deathcore: 12, 'death metal': 30, melodeath: 7 },
-    ownedTags: new Set(['death metal', 'osdm']),
+    ownedTagCounts: { 'death metal': 40, osdm: 12 },
     seedTags: [],
     minHubCount: 5,
     releasesSampled: 25,
@@ -13,10 +13,10 @@ test('частый в хабе и отсутствующий у владельц
   assert.deepEqual(stop.sort(), ['deathcore', 'melodeath']);
 });
 
-test('тег из коллекции владельца стоп-тегом не станет никогда', () => {
+test('тег, которым владелец владеет по-настоящему (много релизов), стоп-тегом не станет никогда', () => {
   const stop = deriveStopTags({
     hubTagCounts: { osdm: 40 },
-    ownedTags: new Set(['osdm']),
+    ownedTagCounts: { osdm: 40 },
     seedTags: [],
     minHubCount: 1,
     releasesSampled: 40,
@@ -24,10 +24,49 @@ test('тег из коллекции владельца стоп-тегом не
   assert.deepEqual(stop, []);
 });
 
+test('тег на ЕДИНСТВЕННОМ релизе владельца не иммунизирует стоп-тег — это шум, а не вкус', () => {
+  // Прямое воспроизведение дефекта: раньше ЛЮБОЕ вхождение (в т.ч. один
+  // залётный релиз вне всех бакетов) блокировало тег навсегда, поэтому
+  // стоп-листы были пустыми на любой достаточно широкой коллекции. Тег
+  // hub-частый (30 >= порога) и у владельца встречается ровно один раз —
+  // при пороге по умолчанию (2) это НЕ считается владением.
+  const stop = deriveStopTags({
+    hubTagCounts: { deathcore: 30 },
+    ownedTagCounts: { deathcore: 1 },
+    seedTags: [],
+    minHubCount: 5,
+    releasesSampled: 30,
+  });
+  assert.deepEqual(stop, ['deathcore']);
+});
+
+test('тег ровно на пороге minOwnedCount уже считается владением', () => {
+  const stop = deriveStopTags({
+    hubTagCounts: { deathcore: 30 },
+    ownedTagCounts: { deathcore: 2 },
+    seedTags: [],
+    minHubCount: 5,
+    releasesSampled: 30,
+  });
+  assert.deepEqual(stop, []);
+});
+
+test('minOwnedCount настраивается вызывающим кодом', () => {
+  const input = {
+    hubTagCounts: { deathcore: 30 },
+    ownedTagCounts: { deathcore: 2 },
+    seedTags: [],
+    minHubCount: 5,
+    releasesSampled: 30,
+  };
+  assert.deepEqual(deriveStopTags({ ...input, minOwnedCount: 3 }), ['deathcore']);
+  assert.deepEqual(deriveStopTags({ ...input, minOwnedCount: 2 }), []);
+});
+
 test('редкие в хабе теги не попадают в стоп-лист — это шум, а не жанр', () => {
   const stop = deriveStopTags({
     hubTagCounts: { 'случайное слово': 2 },
-    ownedTags: new Set(),
+    ownedTagCounts: {},
     seedTags: [],
     minHubCount: 5,
     releasesSampled: 10,
@@ -38,7 +77,7 @@ test('редкие в хабе теги не попадают в стоп-лис
 test('стоп-лист обрезается лимитом и отсортирован по частоте', () => {
   const stop = deriveStopTags({
     hubTagCounts: { a: 100, b: 50, c: 10 },
-    ownedTags: new Set(),
+    ownedTagCounts: {},
     seedTags: [],
     minHubCount: 5,
     releasesSampled: 50,
@@ -50,7 +89,7 @@ test('стоп-лист обрезается лимитом и отсортир�
 test('seed-тег своего бакета в стоп-лист не попадает, даже если частый и не куплен', () => {
   const stop = deriveStopTags({
     hubTagCounts: { powerviolence: 20, grindcore: 15 },
-    ownedTags: new Set(),
+    ownedTagCounts: {},
     seedTags: ['powerviolence'],
     minHubCount: 5,
     releasesSampled: 50,
@@ -61,7 +100,7 @@ test('seed-тег своего бакета в стоп-лист не попад
 test('тег другого бакета (не входящий в переданные seed-теги) стоп-тегом становится', () => {
   const stop = deriveStopTags({
     hubTagCounts: { 'd-beat': 20 },
-    ownedTags: new Set(),
+    ownedTagCounts: {},
     seedTags: ['osdm', 'death metal'],
     minHubCount: 5,
     releasesSampled: 50,
@@ -72,7 +111,18 @@ test('тег другого бакета (не входящий в переда�
 test('регистр не имеет значения: тег владельца в другом регистре всё равно подавляет стоп-тег', () => {
   const stop = deriveStopTags({
     hubTagCounts: { Deathcore: 20 },
-    ownedTags: new Set(['deathcore']),
+    ownedTagCounts: { deathcore: 10 },
+    seedTags: [],
+    minHubCount: 5,
+    releasesSampled: 50,
+  });
+  assert.deepEqual(stop, []);
+});
+
+test('регистр владельца не мешает суммированию: разные регистры одного тега складываются в один счётчик', () => {
+  const stop = deriveStopTags({
+    hubTagCounts: { Deathcore: 20 },
+    ownedTagCounts: { deathcore: 1, Deathcore: 1 },
     seedTags: [],
     minHubCount: 5,
     releasesSampled: 50,
@@ -83,7 +133,7 @@ test('регистр не имеет значения: тег владельца
 test('регистр не имеет значения: seed-тег в другом регистре всё равно исключается', () => {
   const stop = deriveStopTags({
     hubTagCounts: { Powerviolence: 20 },
-    ownedTags: new Set(),
+    ownedTagCounts: {},
     seedTags: ['powerviolence'],
     minHubCount: 5,
     releasesSampled: 50,
@@ -94,7 +144,7 @@ test('регистр не имеет значения: seed-тег в друго
 test('тег, очищающий абсолютный пол, но не набирающий долю выборки, исключается', () => {
   const stop = deriveStopTags({
     hubTagCounts: { 'niche-tag': 6 },
-    ownedTags: new Set(),
+    ownedTagCounts: {},
     seedTags: [],
     minHubCount: 5,
     releasesSampled: 100,
@@ -105,7 +155,7 @@ test('тег, очищающий абсолютный пол, но не наби
 test('тот же счётчик при меньшей выборке набирает долю и попадает в стоп-лист', () => {
   const stop = deriveStopTags({
     hubTagCounts: { 'niche-tag': 6 },
-    ownedTags: new Set(),
+    ownedTagCounts: {},
     seedTags: [],
     minHubCount: 5,
     releasesSampled: 20,
@@ -116,7 +166,7 @@ test('тот же счётчик при меньшей выборке набир
 test('порог по доле выборки: ровно на границе — включён, на единицу ниже — нет', () => {
   const stop = deriveStopTags({
     hubTagCounts: { exact: 10, below: 9 },
-    ownedTags: new Set(),
+    ownedTagCounts: {},
     seedTags: [],
     minHubCount: 5,
     minHubShare: 0.2,
