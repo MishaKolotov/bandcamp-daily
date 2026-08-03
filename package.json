@@ -1,0 +1,18 @@
+{
+  "name": "bandcamp-daily",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20.19" },
+  "scripts": {
+    "test": "node --import tsx --test $(find src -name '*.test.ts')",
+    "build-profile": "node --import tsx bin/build-profile.ts",
+    "neighbors": "node --import tsx bin/neighbors.ts",
+    "daily": "node --import tsx bin/daily.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
