@@ -2,10 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { BUCKETS, bucketsOf } from './buckets.ts';
 
-test('описаны ровно три бакета с каналами', () => {
+test('описаны ровно четыре бакета с каналами', () => {
   assert.deepEqual(
     BUCKETS.map((b) => b.id),
-    ['crust', 'death-metal', 'hardcore-punk'],
+    ['crust', 'death-metal', 'hardcore-punk', 'black-metal'],
   );
   for (const bucket of BUCKETS) {
     assert.ok(bucket.channelEnv.endsWith('_CHANNEL_ID'), bucket.channelEnv);
@@ -45,4 +45,9 @@ test('совпадение регистронезависимо', () => {
 test('голые punk и hardcore относят релиз в hardcore-punk', () => {
   assert.deepEqual(bucketsOf(['punk']), ['hardcore-punk']);
   assert.deepEqual(bucketsOf(['hardcore']), ['hardcore-punk']);
+});
+
+test('релиз чёрного металла попадает в бакет black-metal', () => {
+  assert.deepEqual(bucketsOf(['black metal', 'raw']), ['black-metal']);
+  assert.deepEqual(bucketsOf(['raw black metal']), ['black-metal']);
 });

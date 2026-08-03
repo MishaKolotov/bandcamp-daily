@@ -118,7 +118,7 @@ test('лейблы считаются по всем релизам сразу', 
   assert.ok(profile.labels['la vida es un mus']! > (profile.labels['одиночка'] ?? 0));
 });
 
-test('релизы вне трёх жанров игнорируются', () => {
+test('релизы вне жанров бакетов игнорируются', () => {
   const profile = buildProfile([release({ tags: ['ambient'] })], {
     now: new Date('2026-08-03'),
     minReleases: 1,
@@ -168,7 +168,7 @@ function generateCorpus(count: number): ProfileInput[] {
   const items: ProfileInput[] = [];
   for (let i = 0; i < count; i++) {
     if (i % 17 === 0) {
-      // релиз вне трёх жанров вообще
+      // релиз вне жанров бакетов вообще
       items.push(
         release({
           tags: [offGenreTags[i % offGenreTags.length]!],

@@ -170,7 +170,7 @@ for (const bucket of BUCKETS) {
 }
 
 const unbucketed = inputs.filter((item) => bucketsOf(item.tags).length === 0).length;
-console.log(`\nРелизов вне всех трёх бакетов: ${unbucketed} из ${inputs.length} прочитанных.`);
+console.log(`\nРелизов вне всех бакетов: ${unbucketed} из ${inputs.length} прочитанных.`);
 console.log(`Релизов пропущено из-за нечитаемой страницы: ${unreadable} из ${fanItems.length}.`);
 console.log(`\nПрофиль записан в ${PROFILE_PATH}. Правь tags и stopTags прямо в файле —`);
 console.log('повторный запуск без --force его не тронет, чтобы правки не потерялись.');

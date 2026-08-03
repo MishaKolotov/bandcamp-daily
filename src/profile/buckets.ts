@@ -70,6 +70,23 @@ export const BUCKETS: readonly BucketDef[] = Object.freeze([
       'hardcore',
     ]),
   }),
+  Object.freeze({
+    id: 'black-metal' as const,
+    channelTitle: 'BLACK METAL DAILY',
+    channelEnv: 'BLACK_METAL_CHANNEL_ID',
+    // 'black metal' и 'raw black metal' — впрямую подтверждены тем же
+    // живым прогоном: среди 397 небакетированных релизов это 52 и 10
+    // штук соответственно, четвёртый и седьмой по частоте теги во всей
+    // не-бакетированной массе. Остальные два — 'atmospheric black metal'
+    // и 'blackgaze' — не подтверждены той же выгрузкой (в ней не было
+    // разбивки глубже топ-8), но добавлены консервативно: это
+    // однозначные составные жанровые теги без омонимии на Bandcamp,
+    // в отличие от голого 'black' или модификатора 'blackened'
+    // (blackened death/crust — не то же самое, что чёрный метал сам по
+    // себе). Узкие поджанры (nsbm, war metal, pagan black metal и т.п.)
+    // намеренно не добавлены — коллекция их наличие не подтверждает.
+    seedTags: Object.freeze(['black metal', 'raw black metal', 'atmospheric black metal', 'blackgaze']),
+  }),
 ]);
 
 /**

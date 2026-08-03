@@ -1,5 +1,5 @@
 /** Идентификатор жанрового бакета = целевой телеграм-канал. */
-export type BucketId = 'crust' | 'death-metal' | 'hardcore-punk';
+export type BucketId = 'crust' | 'death-metal' | 'hardcore-punk' | 'black-metal';
 
 /** Позиция из коллекции или вишлиста фаната. */
 export interface FanItem {
