@@ -29,6 +29,16 @@ export interface FreshOptions {
   subdomains: string[];
   now: Date;
   maxAgeDays: number;
+  /**
+   * Сколько дней предзаказ может быть датирован вперёд и всё ещё считаться
+   * свежим. Без этого потолка лейбл, выставивший предзаказ на полгода
+   * вперёд, всплывал бы как «новинка» в каждом прогоне, пока релиз
+   * действительно не выйдет, — то же самое письмо владельцу месяцами.
+   * Рекомендуемое значение — 30: у Bandcamp обычное окно предзаказа
+   * 2–8 недель, и месяц с запасом покрывает его, не пропуская вперёд
+   * анонсы, до которых ещё далеко.
+   */
+  maxFutureDays: number;
 }
 
 function ageInDays(releasedAt: string, now: Date): number {
@@ -74,6 +84,11 @@ export async function freshCandidates(
 ): Promise<Candidate[]> {
   const seen = new Map<string, { title: string; artist: string; itemId: number }>();
 
+  // Последовательные await, а не Promise.all: все эти вызовы в итоге идут
+  // через общий Http-клиент, а он и так сериализует и выдерживает паузу
+  // между запросами сам (см. #enqueue/#throttle в lib/http.ts) —
+  // распараллеливание тут ничего не ускорит, только унесёт троттлинг из
+  // http.ts в случайный порядок готовности промисов.
   for (const tag of options.tags) {
     for (const item of await deps.discover({ tag, slice: 'new', size: 60 })) {
       if (item.url) seen.set(item.url, { title: item.title, artist: item.artist, itemId: item.itemId });
@@ -88,10 +103,15 @@ export async function freshCandidates(
   }
 
   const candidates: Candidate[] = [];
+  let dropped = 0;
   for (const [url, base] of seen) {
     const details = await deps.album(url);
-    if (!details?.releasedAt) continue;
-    if (ageInDays(details.releasedAt, options.now) > options.maxAgeDays) continue;
+    if (!details?.releasedAt) {
+      dropped += 1;
+      continue;
+    }
+    const age = ageInDays(details.releasedAt, options.now);
+    if (age > options.maxAgeDays || age < -options.maxFutureDays) continue;
     candidates.push({
       itemId: base.itemId,
       url,
@@ -104,6 +124,14 @@ export async function freshCandidates(
       alsoCollected: 0,
       origin: 'fresh',
     });
+  }
+  // discover.ts и band.ts уже сигналят «результат может быть неполным» —
+  // усечённый хаб, нерабочая страница дискографии. Тут тот же класс потерь:
+  // страница релиза не открылась или не отдала дату. Одна строка на весь
+  // прогон бакета, не по кандидату — падения отдельных страниц уже видны
+  // в логе из fetchAlbum/http.ts, здесь важна только сводная цифра.
+  if (dropped > 0) {
+    console.warn(`fresh: ${dropped} из ${seen.size} кандидатов выброшены — нет доступной даты релиза`);
   }
   return candidates;
 }

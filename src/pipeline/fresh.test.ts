@@ -22,13 +22,21 @@ function deps(over: Partial<FreshDeps> = {}): FreshDeps {
   };
 }
 
+const baseOptions = {
+  tags: ['crust'],
+  subdomains: [] as string[],
+  now: new Date('2026-08-03'),
+  maxAgeDays: 7,
+  maxFutureDays: 30,
+};
+
 test('релизы из хаба и от подписок объединяются', async () => {
   const found = await freshCandidates(
     deps({
       discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X' }],
       bandReleases: async () => [{ url: 'https://b.test/album/2', title: 'B' }],
     }),
-    { tags: ['crust'], subdomains: ['b'], now: new Date('2026-08-03'), maxAgeDays: 7 },
+    { ...baseOptions, subdomains: ['b'] },
   );
   assert.deepEqual(found.map((c) => c.url).sort(), ['https://a.test/album/1', 'https://b.test/album/2']);
 });
@@ -39,7 +47,7 @@ test('старые релизы отсекаются по дате', async () =>
       discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X' }],
       album: async () => album({ releasedAt: '2020-01-01' }),
     }),
-    { tags: ['crust'], subdomains: [], now: new Date('2026-08-03'), maxAgeDays: 7 },
+    baseOptions,
   );
   assert.deepEqual(found, []);
 });
@@ -50,7 +58,7 @@ test('релиз без даты не проходит — дату провер
       discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X' }],
       album: async () => album({ releasedAt: null }),
     }),
-    { tags: ['crust'], subdomains: [], now: new Date('2026-08-03'), maxAgeDays: 7 },
+    baseOptions,
   );
   assert.deepEqual(found, []);
 });
@@ -61,7 +69,7 @@ test('предзаказ с датой в будущем считается св
       discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X' }],
       album: async () => album({ releasedAt: '2026-09-01' }),
     }),
-    { tags: ['crust'], subdomains: [], now: new Date('2026-08-03'), maxAgeDays: 7 },
+    baseOptions,
   );
   assert.equal(found.length, 1);
 });
@@ -72,7 +80,7 @@ test('один и тот же релиз из двух источников не
       discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X' }],
       bandReleases: async () => [{ url: 'https://a.test/album/1', title: 'A' }],
     }),
-    { tags: ['crust'], subdomains: ['a'], now: new Date('2026-08-03'), maxAgeDays: 7 },
+    { ...baseOptions, subdomains: ['a'] },
   );
   assert.equal(found.length, 1);
 });
@@ -83,7 +91,7 @@ test('нечитаемая страница релиза просто выбра
       discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X' }],
       album: async () => null,
     }),
-    { tags: ['crust'], subdomains: [], now: new Date('2026-08-03'), maxAgeDays: 7 },
+    baseOptions,
   );
   assert.deepEqual(found, []);
 });
@@ -94,7 +102,7 @@ test('кандидат из подписки без числового id пол
       deps({
         bandReleases: async () => [{ url: 'https://b.test/album/2', title: 'B' }],
       }),
-      { tags: [], subdomains: ['b'], now: new Date('2026-08-03'), maxAgeDays: 7 },
+      { ...baseOptions, tags: [], subdomains: ['b'] },
     );
   const first = await runOnce();
   const second = await runOnce();
@@ -114,8 +122,69 @@ test('два разных релиза из подписок получают р
           ? [{ url: 'https://b.test/album/2', title: 'B' }]
           : [{ url: 'https://c.test/album/3', title: 'C' }],
     }),
-    { tags: [], subdomains: ['b', 'c'], now: new Date('2026-08-03'), maxAgeDays: 7 },
+    { ...baseOptions, tags: [], subdomains: ['b', 'c'] },
   );
   assert.equal(found.length, 2);
   assert.notEqual(found[0]?.itemId, found[1]?.itemId);
+});
+
+test('предзаказ ровно на границе maxFutureDays проходит', async () => {
+  // '2026-08-03' -> +30 дней ровно = '2026-09-02'.
+  const found = await freshCandidates(
+    deps({
+      discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X' }],
+      album: async () => album({ releasedAt: '2026-09-02' }),
+    }),
+    baseOptions,
+  );
+  assert.equal(found.length, 1);
+});
+
+test('предзаказ дальше maxFutureDays отбрасывается', async () => {
+  // На день дальше границы — '2026-09-03'.
+  const found = await freshCandidates(
+    deps({
+      discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X' }],
+      album: async () => album({ releasedAt: '2026-09-03' }),
+    }),
+    baseOptions,
+  );
+  assert.deepEqual(found, []);
+});
+
+test('пустые title/artist со страницы релиза подменяются данными источника', async () => {
+  const found = await freshCandidates(
+    deps({
+      discover: async () => [{ itemId: 1, url: 'https://a.test/album/1', title: 'Hub Title', artist: 'Hub Artist' }],
+      album: async () => album({ title: '', artist: '' }),
+    }),
+    baseOptions,
+  );
+  assert.equal(found[0]?.title, 'Hub Title');
+  assert.equal(found[0]?.artist, 'Hub Artist');
+});
+
+test('отброшенные из-за отсутствия даты кандидаты попадают в сводный warn, а не теряются молча', async () => {
+  const warnings: unknown[][] = [];
+  const originalWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args);
+  };
+  try {
+    const found = await freshCandidates(
+      deps({
+        discover: async () => [
+          { itemId: 1, url: 'https://a.test/album/1', title: 'A', artist: 'X' },
+          { itemId: 2, url: 'https://a.test/album/2', title: 'B', artist: 'Y' },
+        ],
+        album: async (url) => (url.endsWith('/1') ? null : album({})),
+      }),
+      baseOptions,
+    );
+    assert.equal(found.length, 1);
+    assert.equal(warnings.length, 1);
+    assert.match(String(warnings[0]?.[0]), /1 из 2/);
+  } finally {
+    console.warn = originalWarn;
+  }
 });
