@@ -47,6 +47,12 @@ test('самый тяжёлый не-опорный тег весит ровно
       release({ tags: ['crust', 'raw'] }),
       release({ tags: ['crust', 'stenchy'] }),
       release({ tags: ['crust', 'stenchy'] }),
+      // Три релиза без 'raw'/'stenchy' — держат долю обоих тегов ниже
+      // umbrellaShare (0.6 по умолчанию), иначе 'raw' (3 из 5 = 60%) сам
+      // попал бы под зонтичный порог и не дошёл бы до строгого 1.
+      release({ tags: ['crust'] }),
+      release({ tags: ['crust'] }),
+      release({ tags: ['crust'] }),
     ],
     { now: new Date('2026-08-03'), minReleases: 2 },
   );
@@ -67,6 +73,51 @@ test('набор со специфичным тегом суммарно вес�
   const sumOf = (tags: string[]): number =>
     tags.reduce((total, tag) => total + (profile.buckets.crust.tags[tag] ?? 0), 0);
   assert.ok(sumOf(['crust', 'raw']) > sumOf(['crust']));
+});
+
+test('НЕ-опорный тег почти на всех релизах бакета — зонтичный, весит 0.5 и не перевешивает редкий характерный тег', () => {
+  // Воспроизводит живой прогон 2026-08: 'metal' был на 21/21 (100%) релизов
+  // death-metal и вышел с весом 1, хотя ничего не различал. Здесь —
+  // синтетический аналог: 'metal' на 9 из 10 релизов crust (не seed-тег
+  // этого бакета), 'raw' — на 2 из 10 (редкий, но специфичный).
+  const releases: ProfileInput[] = [];
+  for (let i = 0; i < 10; i++) {
+    if (i === 9) {
+      releases.push(release({ tags: ['crust'] })); // без 'metal' — доля 90%, не 100%
+    } else if (i < 2) {
+      releases.push(release({ tags: ['crust', 'metal', 'raw'] }));
+    } else {
+      releases.push(release({ tags: ['crust', 'metal'] }));
+    }
+  }
+
+  const profile = buildProfile(releases, { now: new Date('2026-08-03'), minReleases: 2 });
+
+  assert.equal(profile.buckets.crust.tags['metal'], 0.5, 'почти-повсеместный тег должен быть зонтичным (0.5)');
+  assert.equal(profile.buckets.crust.tags['raw'], 1, 'редкий специфичный тег должен нормализоваться к 1');
+  assert.ok(
+    profile.buckets.crust.tags['raw']! > profile.buckets.crust.tags['metal']!,
+    'редкий характерный тег обязан весить больше зонтичного',
+  );
+});
+
+test('umbrellaShare — настраиваемый порог: заниженный ловит тег, который дефолт бы пропустил', () => {
+  // 'occasional' встречается на 3 из 10 релизов (30%) — ниже дефолтного
+  // порога 0.6, но выше явно заданного 0.25.
+  const releases: ProfileInput[] = [];
+  for (let i = 0; i < 10; i++) {
+    releases.push(release({ tags: i < 3 ? ['crust', 'occasional'] : ['crust'] }));
+  }
+
+  const withDefault = buildProfile(releases, { now: new Date('2026-08-03'), minReleases: 2 });
+  assert.equal(withDefault.buckets.crust.tags['occasional'], 1, 'при дефолтном пороге тег не зонтичный');
+
+  const withLowThreshold = buildProfile(releases, {
+    now: new Date('2026-08-03'),
+    minReleases: 2,
+    umbrellaShare: 0.25,
+  });
+  assert.equal(withLowThreshold.buckets.crust.tags['occasional'], 0.5, 'при пониженном пороге тег зонтичный');
 });
 
 test('редкий тег отбрасывается порогом minReleases', () => {

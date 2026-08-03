@@ -10,9 +10,11 @@ export interface ProfileInput {
 
 export interface BucketProfile {
   /**
-   * Тег → вес 0..1. У самого характерного НЕ-опорного тега бакета — 1.
-   * Опорный тег бакета (см. `seedTags` в `./buckets.ts`), если пережил
-   * порог `minReleases`, зафиксирован на 0.5 — см. комментарий в `buildProfile`.
+   * Тег → вес 0..1. У самого характерного дискриминирующего тега бакета —
+   * 1. Опорный тег бакета (см. `seedTags` в `./buckets.ts`) и любой
+   * зонтичный тег (несёт большая доля релизов бакета, см. `umbrellaShare`
+   * в `BuildOptions`), если пережили порог `minReleases`, зафиксированы на
+   * 0.5 — см. комментарий в `buildProfile`.
    */
   tags: Record<string, number>;
   /** Теги-исключатели, заполняются задачей 11 и правятся руками. */
@@ -31,6 +33,23 @@ export interface BuildOptions {
   now: Date;
   /** Тег учитывается, только если встретился минимум в стольких релизах бакета. */
   minReleases?: number;
+  /**
+   * Доля релизов бакета, начиная с которой НЕ-опорный тег считается
+   * зонтичным (см. комментарий в `buildProfile`) и фиксируется на 0.5
+   * вместо участия в нормализации к максимуму 1.
+   *
+   * Порог 0.6 выбран по живому прогону (2026-08) на коллекции хозяина:
+   * зонтичные теги 'punk' в crust и 'metal' в death-metal (ни один не
+   * входит в seedTags своего бакета) несла «почти каждая» позиция бакета —
+   * то есть доля, близкая к 90-100%. Настоящие дискриминирующие
+   * кроссовер-теги того же прогона
+   * («doom metal», «black metal» внутри death-metal) вышли с
+   * нормализованным весом 0.28 и 0.24 — то есть их доля от максимума
+   * заведомо меньше половины. 0.6 лежит с запасом выше «почти всех» и с
+   * таким же запасом выше зоны реальных кроссоверов, так что не должен
+   * задевать характерные теги, только настоящие зонтичные.
+   */
+  umbrellaShare?: number;
 }
 
 /**
@@ -72,6 +91,7 @@ interface BucketAccumulator {
 
 export function buildProfile(items: ProfileInput[], options: BuildOptions): Profile {
   const minReleases = options.minReleases ?? 2;
+  const umbrellaShare = options.umbrellaShare ?? 0.6;
 
   const accumulators = new Map<BucketId, BucketAccumulator>();
   for (const bucket of BUCKETS) {
@@ -120,18 +140,35 @@ export function buildProfile(items: ProfileInput[], options: BuildOptions): Prof
     // релиз с одним лишь общим тегом всё ещё проходит порог совпадения у
     // скорера и попадает в рассмотрение, но не может перевесить релиз,
     // совпавший со специфическим вкусом хозяина.
+    //
+    // Та же болезнь бьёт и НЕ-опорные теги: живой прогон (2026-08) показал
+    // 'metal' весом 1 в death-metal и 'punk' весом 1 в crust — теги, которых
+    // ни разу не было в seedTags этих бакетов, но которые несёт почти
+    // каждый релиз бакета, так что они точно так же съедали шкалу и не
+    // различали ничего. Обобщаем: любой тег (опорный или нет), несущий
+    // долю релизов бакета не ниже umbrellaShare, — зонтичный, и получает
+    // тот же фиксированный вес 0.5, а не участвует в нормализации.
+    // Нормализуется к максимуму 1 только оставшийся, по-настоящему
+    // дискриминирующий остаток.
     const nonSeedWeights = new Map<string, number>();
     const keptSeedTags: string[] = [];
+    const umbrellaTags: string[] = [];
     for (const [tag, stat] of acc.tags) {
       if (stat.releases < minReleases) continue;
       if (seedTags.has(tag)) {
         keptSeedTags.push(tag);
+        continue;
+      }
+      const share = acc.releaseCount > 0 ? stat.releases / acc.releaseCount : 0;
+      if (share >= umbrellaShare) {
+        umbrellaTags.push(tag);
       } else {
         nonSeedWeights.set(tag, stat.weight);
       }
     }
     const tags = normalize(nonSeedWeights);
     for (const tag of keptSeedTags) tags[tag] = 0.5;
+    for (const tag of umbrellaTags) tags[tag] = 0.5;
 
     buckets[bucket.id] = {
       tags,
