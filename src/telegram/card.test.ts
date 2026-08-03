@@ -101,3 +101,17 @@ test('callback_data укладывается в 64 байта в худшем с
     );
   }
 });
+
+test('когда бюджета хватает ровно на артиста, обрезается только название — не имя артиста', () => {
+  // Ссылка подобрана так, что на заголовок остаётся ровно столько символов,
+  // сколько занимает "<b>Band &amp; Co</b> — " (23) — граничный случай между
+  // «título обрезается» и «даже артисту не хватает места».
+  const url = `https://x.test/${'a'.repeat(1000 - 'https://x.test/'.length)}`;
+  assert.equal(url.length, 1000);
+  const c: Candidate = { ...candidate, url, title: 'Some Title' };
+  const card = buildCard(c, 'crust', []);
+  assert.ok(
+    card.caption.startsWith('<b>Band &amp; Co</b>'),
+    `имя артиста обрезалось, хотя бюджета хватало ровно на него: ${card.caption.slice(0, 40)}`,
+  );
+});

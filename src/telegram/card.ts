@@ -91,7 +91,7 @@ function truncatePlain(text: string, maxLen: number): string {
 function buildHeader(artist: string, title: string, budget: number): string {
   const safeBudget = Math.max(budget, 0);
   const prefix = `<b>${escapeHtml(artist)}</b> — `;
-  if (prefix.length >= safeBudget) {
+  if (prefix.length > safeBudget) {
     // Экстремальный случай: даже одному имени артиста не хватает места.
     const artistBudget = Math.max(safeBudget - '<b></b>'.length, 0);
     return `<b>${escapeHtml(truncatePlain(artist, artistBudget))}</b>`;
