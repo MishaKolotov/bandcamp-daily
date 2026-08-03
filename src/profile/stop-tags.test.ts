@@ -8,6 +8,7 @@ test('частый в хабе и отсутствующий у владельц
     ownedTags: new Set(['death metal', 'osdm']),
     seedTags: [],
     minHubCount: 5,
+    releasesSampled: 25,
   });
   assert.deepEqual(stop.sort(), ['deathcore', 'melodeath']);
 });
@@ -18,6 +19,7 @@ test('тег из коллекции владельца стоп-тегом не
     ownedTags: new Set(['osdm']),
     seedTags: [],
     minHubCount: 1,
+    releasesSampled: 40,
   });
   assert.deepEqual(stop, []);
 });
@@ -28,6 +30,7 @@ test('редкие в хабе теги не попадают в стоп-лис
     ownedTags: new Set(),
     seedTags: [],
     minHubCount: 5,
+    releasesSampled: 10,
   });
   assert.deepEqual(stop, []);
 });
@@ -38,6 +41,7 @@ test('стоп-лист обрезается лимитом и отсортир�
     ownedTags: new Set(),
     seedTags: [],
     minHubCount: 5,
+    releasesSampled: 50,
     limit: 2,
   });
   assert.deepEqual(stop, ['a', 'b']);
@@ -49,6 +53,7 @@ test('seed-тег своего бакета в стоп-лист не попад
     ownedTags: new Set(),
     seedTags: ['powerviolence'],
     minHubCount: 5,
+    releasesSampled: 50,
   });
   assert.deepEqual(stop, ['grindcore']);
 });
@@ -59,6 +64,7 @@ test('тег другого бакета (не входящий в переда�
     ownedTags: new Set(),
     seedTags: ['osdm', 'death metal'],
     minHubCount: 5,
+    releasesSampled: 50,
   });
   assert.deepEqual(stop, ['d-beat']);
 });
@@ -69,6 +75,7 @@ test('регистр не имеет значения: тег владельца
     ownedTags: new Set(['deathcore']),
     seedTags: [],
     minHubCount: 5,
+    releasesSampled: 50,
   });
   assert.deepEqual(stop, []);
 });
@@ -79,6 +86,41 @@ test('регистр не имеет значения: seed-тег в друго
     ownedTags: new Set(),
     seedTags: ['powerviolence'],
     minHubCount: 5,
+    releasesSampled: 50,
   });
   assert.deepEqual(stop, []);
+});
+
+test('тег, очищающий абсолютный пол, но не набирающий долю выборки, исключается', () => {
+  const stop = deriveStopTags({
+    hubTagCounts: { 'niche-tag': 6 },
+    ownedTags: new Set(),
+    seedTags: [],
+    minHubCount: 5,
+    releasesSampled: 100,
+  });
+  assert.deepEqual(stop, []);
+});
+
+test('тот же счётчик при меньшей выборке набирает долю и попадает в стоп-лист', () => {
+  const stop = deriveStopTags({
+    hubTagCounts: { 'niche-tag': 6 },
+    ownedTags: new Set(),
+    seedTags: [],
+    minHubCount: 5,
+    releasesSampled: 20,
+  });
+  assert.deepEqual(stop, ['niche-tag']);
+});
+
+test('порог по доле выборки: ровно на границе — включён, на единицу ниже — нет', () => {
+  const stop = deriveStopTags({
+    hubTagCounts: { exact: 10, below: 9 },
+    ownedTags: new Set(),
+    seedTags: [],
+    minHubCount: 5,
+    minHubShare: 0.2,
+    releasesSampled: 50,
+  });
+  assert.deepEqual(stop, ['exact']);
 });
