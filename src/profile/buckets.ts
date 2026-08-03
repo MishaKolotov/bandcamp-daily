@@ -10,31 +10,39 @@ export interface BucketDef {
    * Опорные теги: по ним релиз из коллекции относится к бакету.
    * Остальные веса тегов вычисляются из данных, эти заданы вручную.
    */
-  seedTags: string[];
+  seedTags: readonly string[];
 }
 
-export const BUCKETS: BucketDef[] = [
-  {
-    id: 'crust',
+export const BUCKETS: readonly BucketDef[] = Object.freeze([
+  Object.freeze({
+    id: 'crust' as const,
     channelTitle: 'CRUST DAILY',
     channelEnv: 'CRUST_CHANNEL_ID',
-    seedTags: ['crust', 'crust punk', 'crustpunk', 'd-beat', 'dbeat', 'stenchcore', 'neocrust'],
-  },
-  {
-    id: 'death-metal',
+    seedTags: Object.freeze([
+      'crust',
+      'crust punk',
+      'crustpunk',
+      'd-beat',
+      'dbeat',
+      'stenchcore',
+      'neocrust',
+    ]),
+  }),
+  Object.freeze({
+    id: 'death-metal' as const,
     channelTitle: 'DEATH METAL DAILY',
     channelEnv: 'DEATH_METAL_CHANNEL_ID',
-    seedTags: [
+    seedTags: Object.freeze([
       'death metal',
       'osdm',
       'old school death metal',
       'death-doom',
       'death doom',
       'brutal death metal',
-    ],
-  },
-  {
-    id: 'hardcore-punk',
+    ]),
+  }),
+  Object.freeze({
+    id: 'hardcore-punk' as const,
     channelTitle: 'HARDCORE PUNK DAILY',
     channelEnv: 'HARDCORE_PUNK_CHANNEL_ID',
     // Голые 'hardcore' и 'punk' намеренно не включены: на Bandcamp это
@@ -45,17 +53,22 @@ export const BUCKETS: BucketDef[] = [
     // 'straight edge' вдобавок теговый омоним (пересекается с metalcore).
     // Не дополнять "для ровного счёта" — недостающее вытянут derived-веса
     // из данных, а хозяин всё равно проверяет профиль руками.
-    seedTags: ['hardcore punk', 'hardcore-punk', 'powerviolence', 'raw punk', 'ukhc'],
-  },
-];
+    seedTags: Object.freeze(['hardcore punk', 'hardcore-punk', 'powerviolence', 'raw punk', 'ukhc']),
+  }),
+]);
 
-/** Бакет релиза: тот, чьих seed-тегов совпало больше. Ничьи разрешаются порядком BUCKETS. */
-export function bucketOf(tags: string[]): BucketId | null {
+/**
+ * Все бакеты, чьи seed-теги пересекаются с тегами релиза, в порядке BUCKETS.
+ * Это не классификация "релиз принадлежит одному бакету" — релиз может
+ * питать статистику нескольких бакетов сразу (кроссовер crust/hardcore —
+ * обычное дело в этой коллекции). Пустой массив, если совпадений нет.
+ */
+export function bucketsOf(tags: string[]): BucketId[] {
   const normalized = new Set(tags.map((tag) => tag.toLowerCase()));
-  let best: { id: BucketId; hits: number } | null = null;
+  const result: BucketId[] = [];
   for (const bucket of BUCKETS) {
-    const hits = bucket.seedTags.filter((tag) => normalized.has(tag)).length;
-    if (hits > 0 && (best === null || hits > best.hits)) best = { id: bucket.id, hits };
+    const hasHit = bucket.seedTags.some((tag) => normalized.has(tag.toLowerCase()));
+    if (hasHit) result.push(bucket.id);
   }
-  return best?.id ?? null;
+  return result;
 }
