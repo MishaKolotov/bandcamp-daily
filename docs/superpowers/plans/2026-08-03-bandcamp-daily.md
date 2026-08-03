@@ -72,7 +72,7 @@
   "type": "module",
   "engines": { "node": ">=20.19" },
   "scripts": {
-    "test": "node --import tsx --test $(find src -name '*.test.ts')",
+    "test": "find src -name '*.test.ts' -exec node --import tsx --test {} +",
     "build-profile": "node --import tsx bin/build-profile.ts",
     "neighbors": "node --import tsx bin/neighbors.ts",
     "daily": "node --import tsx bin/daily.ts"
