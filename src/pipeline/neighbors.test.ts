@@ -204,3 +204,57 @@ test('затравка берёт разреженную выборку по в�
   });
   assert.deepEqual(queried, [1, 4]);
 });
+
+test('candidateLimit ограничивает поход в чужие коллекции только самыми частыми кандидатами', async () => {
+  // Три семени (item 1, 2, 3), каждое отдаёт свой список коллекционеров.
+  // Фанат 10 встречается во всех трёх семенах (счёт 3), 20 — в двух
+  // (счёт 2), 30 — в одном (счёт 1). candidateLimit=2 обязан ограничить
+  // deps.collectionOf ровно двумя вызовами — за 10 и 20, самыми частыми;
+  // за 30, с наименьшим счётом, коллекция вообще не запрашивается. Это
+  // единственный рычаг стоимости недельного прогона — сеть здесь дороже
+  // всего.
+  const calls: number[] = [];
+  const deps: NeighborDeps = {
+    collectors: async (albumId) => {
+      if (albumId === 1) return [10, 20, 30];
+      if (albumId === 2) return [10, 20];
+      return [10];
+    },
+    collectionOf: async (fanId) => {
+      calls.push(fanId);
+      return [];
+    },
+  };
+  await computeNeighbors(deps, {
+    ownerFanId: 999,
+    mine: [item(1), item(2), item(3)],
+    seedCount: 3,
+    candidateLimit: 2,
+    neighborLimit: 10,
+  });
+  assert.deepEqual(calls, [10, 20]);
+});
+
+test('neighborLimit обрезает итоговый список после сортировки по весу', async () => {
+  // Три фаната проходят порог пересечения с разными весами: 10 — 1.0
+  // (вся его коллекция совпадает с моей), 20 — 2/3 ≈ 0.6667 (совпадение
+  // плюс один посторонний релиз), 30 — 0.25 (одно совпадение среди
+  // четырёх посторонних). neighborLimit=2 должен оставить только два
+  // самых весомых — 10 и 20, — а не просто первые два по порядку обхода.
+  const deps: NeighborDeps = {
+    collectors: async () => [10, 20, 30],
+    collectionOf: async (fanId) => {
+      if (fanId === 10) return [item(1), item(2), item(3), item(4)];
+      if (fanId === 20) return [item(1), item(2), item(99)];
+      return [item(1), item(98), item(97), item(96), item(95)];
+    },
+  };
+  const neighbors = await computeNeighbors(deps, {
+    ownerFanId: 999,
+    mine: [item(1), item(2), item(3), item(4)],
+    seedCount: 4,
+    candidateLimit: 10,
+    neighborLimit: 2,
+  });
+  assert.deepEqual(neighbors.map((n) => n.fanId), [10, 20]);
+});
