@@ -55,6 +55,16 @@ test('числовые и шестнадцатеричные HTML-сущност
   assert.equal(releases[0]?.title, "Rock 'n' Roll ’Til I Die");
 });
 
+test('число вне диапазона Unicode остаётся текстом и не роняет разбор грида', () => {
+  const items = [
+    { id: 1, title: 'Cat &#999999999; Dog &#xFFFFFFFF;', artist: 'X', page_url: '/album/a', type: 'album' },
+  ];
+  const grid = `<ol data-client-items="${JSON.stringify(items).replaceAll('"', '&quot;')}"></ol>`;
+  const releases = parseMusicGrid(grid, 'x');
+  assert.equal(releases.length, 1, 'дискография не должна исчезать из-за одного символа');
+  assert.equal(releases[0]?.title, 'Cat &#999999999; Dog &#xFFFFFFFF;');
+});
+
 test('реальная страница: заголовок с экранированным апострофом разбирается верно', () => {
   const releases = parseMusicGrid(fixture, 'lavidaesunmus');
   const release = releases.find((r) => r.url.endsWith('/album/societys-bastard'));

@@ -17,14 +17,27 @@ interface GridItem {
  * прописана явно как «именованная». &amp; должен разбираться последним —
  * иначе `&amp;#39;` превратится в апостроф вместо буквального `&#39;`.
  */
+const MAX_CODE_POINT = 0x10ffff;
+
+/**
+ * Значение вне диапазона Unicode — не сущность, а совпавший по форме текст.
+ * Оставляем его как есть: String.fromCodePoint на таком бросает RangeError, а
+ * исключение здесь стёрло бы разбор всей дискографии группы из-за одного
+ * символа в одном названии.
+ */
+function fromCodePoint(match: string, code: number): string {
+  if (!Number.isInteger(code) || code < 0 || code > MAX_CODE_POINT) return match;
+  return String.fromCodePoint(code);
+}
+
 function decodeEntities(value: string): string {
   return value
     .replaceAll('&quot;', '"')
     .replaceAll('&#39;', "'")
     .replaceAll('&lt;', '<')
     .replaceAll('&gt;', '>')
-    .replace(/&#x([0-9a-fA-F]+);/g, (_full, hex: string) => String.fromCodePoint(parseInt(hex, 16)))
-    .replace(/&#(\d+);/g, (_full, dec: string) => String.fromCodePoint(Number(dec)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (full, hex: string) => fromCodePoint(full, parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (full, dec: string) => fromCodePoint(full, Number(dec)))
     .replaceAll('&amp;', '&');
 }
 
