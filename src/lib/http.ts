@@ -5,6 +5,16 @@ import { join } from 'node:path';
 const USER_AGENT =
   'bandcamp-daily/1.0 (personal listening recommender; contact: github.com/MishaKolotov/bandcamp-daily)';
 
+const RETRYABLE = Symbol('retryable');
+
+function markRetryable(error: Error): void {
+  (error as Error & { [RETRYABLE]?: true })[RETRYABLE] = true;
+}
+
+function isRetryable(error: unknown): boolean {
+  return error instanceof Error && (error as Error & { [RETRYABLE]?: true })[RETRYABLE] === true;
+}
+
 export interface HttpOptions {
   fetchImpl?: typeof fetch;
   cacheDir?: string;
@@ -55,7 +65,10 @@ export class Http {
     return join(this.#cacheDir, `${hash}.txt`);
   }
 
-  async #send(url: string, init: RequestInit): Promise<string> {
+  async #send(
+    url: string,
+    init: { method: string; headers?: Record<string, string>; body?: string },
+  ): Promise<string> {
     let lastError: unknown;
     for (let attempt = 0; attempt <= this.#retries; attempt += 1) {
       await this.#throttle();
@@ -64,13 +77,19 @@ export class Http {
           ...init,
           headers: { 'User-Agent': USER_AGENT, ...(init.headers ?? {}) },
         });
-        if (response.status === 429 || response.status >= 500) {
-          throw new Error(`bandcamp ответил ${response.status} на ${url}`);
+        if (!response.ok) {
+          const error = new Error(`bandcamp ответил ${response.status} на ${url}`);
+          // Только 429/5xx имеет смысл повторять — это перегрузка/сбой на их стороне.
+          // Остальные не-ok статусы (404 и т.п.) не исправит повтор — фейлимся сразу.
+          if (response.status === 429 || response.status >= 500) markRetryable(error);
+          throw error;
         }
-        if (!response.ok) throw new Error(`bandcamp ответил ${response.status} на ${url}`);
         return await response.text();
       } catch (error) {
         lastError = error;
+        if (!isRetryable(error)) throw error;
+        // Бэкофф здесь всегда >= minDelayMs, так что следующий #throttle() почти не спит —
+        // паузы не складываются. Если формулу когда-нибудь уменьшат ниже minDelayMs, это условие сломается.
         if (attempt < this.#retries) await this.#sleep(this.#minDelayMs * (attempt + 2));
       }
     }
