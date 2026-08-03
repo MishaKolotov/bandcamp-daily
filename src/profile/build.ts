@@ -1,5 +1,6 @@
 import type { BucketId } from '../bandcamp/types.ts';
 import { BUCKETS, bucketsOf } from './buckets.ts';
+import { canonicalizeTag, pickDisplaySpelling } from '../lib/tags.ts';
 
 export interface ProfileInput {
   tags: string[];
@@ -83,10 +84,19 @@ function normalize(counts: Map<string, number>): Record<string, number> {
   return result;
 }
 
-/** Тег → { суммарный вес, число релизов бакета, где тег встретился }. */
+/**
+ * Канонический тег (см. `canonicalizeTag` в `../lib/tags.ts`) → суммарный
+ * вес, число релизов бакета, где тег встретился, и — отдельно — счётчик
+ * СЫРЫХ написаний, которые под этот канонический ключ схлопнулись
+ * ('crust punk' 5 раз, 'crustpunk' 3, 'crust-punk' 2 — всё под одним ключом
+ * 'crustpunk'). Счётчик написаний нужен только для того, чтобы в конце
+ * выбрать одно человекочитаемое написание на показ — см. `pickDisplaySpelling`
+ * и его использование ниже.
+ */
 interface TagStat {
   weight: number;
   releases: number;
+  spellings: Map<string, number>;
 }
 
 /** Всё, что накапливается для одного бакета, в одной структуре. */
@@ -117,6 +127,11 @@ export function buildProfile(items: ProfileInput[], options: BuildOptions): Prof
   // 'metal' размазаны по всей коллекции целиком, включая релизы вне любого
   // бакета (эмбиент с тегом города и т.п.) — если считать базовую частоту
   // только по бакетированным релизам, часть их вездесущности потеряется.
+  // Ключ — КАНОНИЧЕСКИЙ (см. `canonicalizeTag`), не сырое написание: без
+  // этого 'crust punk' и 'crustpunk' на одном и том же релизе считались бы
+  // двумя разными тегами, и их совместная вездесущность недосчитывалась бы.
+  // Дисплей-написание тут не нужно — этот счётчик участвует только в
+  // числовом overRepresentation ниже, а не в итоговом выводе.
   const globalTagReleases = new Map<string, number>();
 
   for (const item of items) {
@@ -125,8 +140,22 @@ export function buildProfile(items: ProfileInput[], options: BuildOptions): Prof
       const key = item.label.trim().toLowerCase();
       labels.set(key, (labels.get(key) ?? 0) + weight);
     }
-    for (const tag of new Set(item.tags.map((t) => t.toLowerCase()))) {
-      globalTagReleases.set(tag, (globalTagReleases.get(tag) ?? 0) + 1);
+
+    // Теги релиза, схлопнутые по каноническому ключу: канонический ключ →
+    // ПЕРВОЕ встреченное сырое написание. Дедуп нужен на случай (пусть и
+    // маловероятный на практике), что Bandcamp отдал на одной странице сразу
+    // два написания одного тега — для статистики релиза это всё ещё одно
+    // вхождение, а не два.
+    const canonicalTagsOfItem = new Map<string, string>();
+    for (const raw of item.tags) {
+      const spelling = raw.trim().toLowerCase();
+      if (!spelling) continue;
+      const key = canonicalizeTag(spelling);
+      if (!canonicalTagsOfItem.has(key)) canonicalTagsOfItem.set(key, spelling);
+    }
+
+    for (const key of canonicalTagsOfItem.keys()) {
+      globalTagReleases.set(key, (globalTagReleases.get(key) ?? 0) + 1);
     }
     // Релиз может задевать сразу несколько бакетов (кроссовер crust/hardcore
     // и т.п.) — он честно питает статистику каждого совпавшего, а не только
@@ -135,20 +164,32 @@ export function buildProfile(items: ProfileInput[], options: BuildOptions): Prof
       const bucket = accumulators.get(bucketId)!;
       bucket.releaseCount += 1;
       bucket.weightSum += weight;
-      for (const tag of new Set(item.tags.map((t) => t.toLowerCase()))) {
-        const stat = bucket.tags.get(tag) ?? { weight: 0, releases: 0 };
+      for (const [key, spelling] of canonicalTagsOfItem) {
+        const stat = bucket.tags.get(key) ?? { weight: 0, releases: 0, spellings: new Map() };
         stat.weight += weight;
         stat.releases += 1;
-        bucket.tags.set(tag, stat);
+        stat.spellings.set(spelling, (stat.spellings.get(spelling) ?? 0) + 1);
+        bucket.tags.set(key, stat);
       }
     }
   }
   const totalReleases = items.length;
 
+  // Словарь мест (`../locations.ts`) хранит человекочитаемые сегменты
+  // ('new york', 'richmond') — тем же способом, что и seed-теги и профиль,
+  // сравнение с тегом релиза идёт по каноническому ключу, а не по точной
+  // строке: тег 'new-york' или 'newyork' обязан так же попасть под словарь
+  // мест, как и буквальное 'new york'. Само содержимое словаря на диске
+  // (`data/location-vocabulary.json`) при этом остаётся нечитанным этой
+  // канонизацией — она применяется только здесь, в момент сравнения.
+  const canonicalLocationVocabulary = options.locationVocabulary
+    ? new Set([...options.locationVocabulary].map(canonicalizeTag))
+    : undefined;
+
   const buckets = {} as Record<BucketId, BucketProfile>;
   for (const bucket of BUCKETS) {
     const acc = accumulators.get(bucket.id)!;
-    const seedTags = new Set(bucket.seedTags.map((t) => t.toLowerCase()));
+    const seedTags = new Set(bucket.seedTags.map(canonicalizeTag));
 
     // Опорный тег бакета есть у каждого релиза бакета по построению (это и
     // есть критерий bucketsOf) — он всегда оказался бы максимумом и съедал
@@ -209,12 +250,22 @@ export function buildProfile(items: ProfileInput[], options: BuildOptions): Prof
     //    globalTagReleases начнут копить по другому источнику): тогда тег
     //    получит нейтральный overRepresentation 1 (log = 0), а не
     //    NaN/Infinity.
+    // Ключи здесь и ниже — КАНОНИЧЕСКИЕ (см. `canonicalizeTag`), не то, что
+    // в итоге пишется в profile.json: несколько сырых написаний одного тега
+    // ('crust punk'/'crustpunk'/'crust-punk') сходятся здесь в ОДНУ запись
+    // acc.tags с суммарным весом и суммарным числом релизов — иначе каждое
+    // написание по отдельности заново проходило бы порог minReleases и несло
+    // свою собственную урезанную долю веса, как было до канонизации (см.
+    // отчёт по этой задаче: 'dbeat'/'d-beat'/'crust punk'/'crustpunk'/
+    // 'rawpunk'/'raw punk' — пять записей на три жанра в реальном прогоне).
+    // Человекочитаемое написание для вывода выбирается отдельно, через
+    // `pickDisplaySpelling(stat.spellings)`, только в конце — см. ниже.
     const nonSeedScores = new Map<string, number>();
-    const keptSeedTags: string[] = [];
-    for (const [tag, stat] of acc.tags) {
+    const keptSeedKeys: string[] = [];
+    for (const [key, stat] of acc.tags) {
       if (stat.releases < minReleases) continue;
-      if (seedTags.has(tag)) {
-        keptSeedTags.push(tag);
+      if (seedTags.has(key)) {
+        keptSeedKeys.push(key);
         continue;
       }
       // Проверка ПОСЛЕ seedTags и ДО over-representation: опорный тег бакета
@@ -224,16 +275,28 @@ export function buildProfile(items: ProfileInput[], options: BuildOptions): Prof
       // over-representation ниже — не получает НИКАКОГО веса, а не 0,
       // который normalize() всё равно мог бы прижать к чему-то ненулевому
       // на малой выборке.
-      if (options.locationVocabulary?.has(tag)) continue;
+      if (canonicalLocationVocabulary?.has(key)) continue;
       const bucketRate = acc.releaseCount > 0 ? stat.releases / acc.releaseCount : 0;
-      const globalCount = globalTagReleases.get(tag) ?? stat.releases;
+      const globalCount = globalTagReleases.get(key) ?? stat.releases;
       const globalRate = totalReleases > 0 ? globalCount / totalReleases : 0;
       const overRepresentation = globalRate > 0 ? bucketRate / globalRate : 1;
       const informativeness = Math.max(0, Math.log(overRepresentation));
-      nonSeedScores.set(tag, stat.weight * informativeness);
+      nonSeedScores.set(key, stat.weight * informativeness);
     }
-    const tags = normalize(nonSeedScores);
-    for (const tag of keptSeedTags) tags[tag] = 0.5;
+    const normalizedByKey = normalize(nonSeedScores);
+
+    // Финальный вывод: канонический ключ → человекочитаемое написание,
+    // выбранное как самое частое среди фактически встреченных на релизах
+    // бакета (см. `pickDisplaySpelling`) — это то, что владелец увидит и
+    // сможет поправить руками в data/profile.json, и то, что попадёт в
+    // reasons карточки в Telegram через совпадение в score.ts.
+    const tags: Record<string, number> = {};
+    for (const [key, weight] of Object.entries(normalizedByKey)) {
+      tags[pickDisplaySpelling(acc.tags.get(key)!.spellings)] = weight;
+    }
+    for (const key of keptSeedKeys) {
+      tags[pickDisplaySpelling(acc.tags.get(key)!.spellings)] = 0.5;
+    }
 
     buckets[bucket.id] = {
       tags,

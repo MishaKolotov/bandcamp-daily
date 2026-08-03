@@ -121,6 +121,36 @@ test('сильное совпадение переживает большой ш
   assert.equal(result.rejected, false);
 });
 
+test('совпадение по каноническому тегу: профиль и кандидат пишут тег по-разному', () => {
+  // data/profile.json хозяин правит руками — он мог вписать тег с дефисом,
+  // а Bandcamp тегировал конкретный релиз слитно (или наоборот). Совпадение
+  // не должно теряться из-за разницы в написании.
+  const bucketAlt: BucketProfile = {
+    tags: { crust: 0.5, 'crust-punk': 0.8 },
+    stopTags: [],
+    releaseCount: 10,
+    weightSum: 10,
+  };
+  const matched = score(candidate({ tags: ['crust', 'crustpunk'] }), bucketAlt, {});
+  assert.equal(matched.rejected, false);
+  assert.equal(matched.total, 1.3);
+  assert.deepEqual(matched.reasons, ['crustpunk', 'crust']);
+});
+
+test('стоп-тег ловит кандидата, даже если тот написан иначе, чем в профиле', () => {
+  const bucketAlt: BucketProfile = {
+    tags: { crust: 0.5, 'discharge worship': 1 },
+    stopTags: ['death-core'],
+    releaseCount: 10,
+    weightSum: 10,
+  };
+  // 'crust' (0.5) ниже STRONG_MATCH (1.5) — слабое совпадение, стоп-тег
+  // должен отбраковать релиз целиком, даже несмотря на разницу в написании
+  // ('deathcore' у кандидата против 'death-core' в profile.json).
+  const weak = score(candidate({ tags: ['crust', 'deathcore'] }), bucketAlt, {});
+  assert.equal(weak.rejected, true);
+});
+
 test('в reasons попадают совпавшие теги, сильнейшие первыми', () => {
   const result = score(candidate({ tags: ['raw punk', 'crust', 'discharge worship'] }), bucket, {});
   // discharge worship (1) тяжелее опорного crust (0.5), который в новой форме профиля

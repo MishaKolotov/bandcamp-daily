@@ -1,3 +1,5 @@
+import { canonicalizeTag, pickDisplaySpelling } from '../lib/tags.ts';
+
 export interface StopTagInput {
   /** Тег → сколько раз встретился среди релизов тег-хаба. */
   hubTagCounts: Record<string, number>;
@@ -83,6 +85,15 @@ export interface StopTagInput {
  * географию от жанра (никакого справочника алиасов здесь нет и не будет),
  * так что сгенерированный стоп-лист нужно вручную просматривать на
  * предмет городов и стран, прежде чем доверять профилю.
+ *
+ * Все три входа (хаб, владение, seed-теги) сравниваются по КАНОНИЧЕСКОМУ
+ * ключу тега (см. `canonicalizeTag` в `../lib/tags.ts`), не по точной
+ * строке: без этого одно и то же соседнее написание жанра ('crust punk',
+ * 'crustpunk', 'crust-punk') оседало бы в `hubTagCounts` тремя отдельными
+ * записями, каждая из которых по отдельности могла не дотянуть до порога
+ * частоты — и стоп-тег молча пропадал бы целиком вместо того, чтобы
+ * пройти по суммарному счёту (тот же класс дилюции, что чинит `build.ts`
+ * для весов профиля — см. отчёт по задаче).
  */
 export function deriveStopTags(input: StopTagInput): string[] {
   const minHubCount = input.minHubCount ?? 5;
@@ -90,17 +101,36 @@ export function deriveStopTags(input: StopTagInput): string[] {
   const minOwnedCount = input.minOwnedCount ?? 2;
   const limit = input.limit ?? 40;
   const threshold = Math.max(minHubCount, minHubShare * input.releasesSampled);
+
   const ownedCounts = new Map<string, number>();
   for (const [tag, count] of Object.entries(input.ownedTagCounts)) {
-    const key = tag.toLowerCase();
+    const key = canonicalizeTag(tag);
     ownedCounts.set(key, (ownedCounts.get(key) ?? 0) + count);
   }
-  const seedLower = new Set(input.seedTags.map((tag) => tag.toLowerCase()));
-  return Object.entries(input.hubTagCounts)
-    .filter(([, count]) => count >= threshold)
-    .filter(([tag]) => (ownedCounts.get(tag.toLowerCase()) ?? 0) < minOwnedCount)
-    .filter(([tag]) => !seedLower.has(tag.toLowerCase()))
-    .sort((a, b) => b[1] - a[1])
+  const seedCanonical = new Set(input.seedTags.map(canonicalizeTag));
+
+  /** Канонический тег хаба → суммарный счёт + написание → его собственный счёт (для display). */
+  interface HubGroup {
+    count: number;
+    spellings: Map<string, number>;
+  }
+  const hubGroups = new Map<string, HubGroup>();
+  for (const [tag, count] of Object.entries(input.hubTagCounts)) {
+    const key = canonicalizeTag(tag);
+    const group = hubGroups.get(key) ?? { count: 0, spellings: new Map() };
+    group.count += count;
+    // Record<string, number> не может содержать один и тот же сырой ключ
+    // дважды, так что здесь всегда одна запись на написание — просто её
+    // собственный счёт из hubTagCounts, без накопления.
+    group.spellings.set(tag, count);
+    hubGroups.set(key, group);
+  }
+
+  return [...hubGroups.entries()]
+    .filter(([, group]) => group.count >= threshold)
+    .filter(([key]) => (ownedCounts.get(key) ?? 0) < minOwnedCount)
+    .filter(([key]) => !seedCanonical.has(key))
+    .sort((a, b) => b[1].count - a[1].count)
     .slice(0, limit)
-    .map(([tag]) => tag);
+    .map(([, group]) => pickDisplaySpelling(group.spellings));
 }

@@ -1,5 +1,6 @@
 import type { Candidate } from '../bandcamp/types.ts';
 import type { BucketProfile } from './build.ts';
+import { canonicalizeTag } from '../lib/tags.ts';
 
 export interface ScoreContext {
   /** Лейбл → вес 0..1 из профиля. */
@@ -69,13 +70,31 @@ export function score(
 ): ScoreResult {
   const tags = candidate.tags.map((tag) => tag.toLowerCase());
 
+  // `bucket.tags`/`bucket.stopTags` приходят из data/profile.json, который
+  // хозяин правит руками — он мог вписать туда любое из трёх написаний тега
+  // ('crust punk' / 'crust-punk' / 'crustpunk'), а Bandcamp мог тегировать
+  // КОНКРЕТНЫЙ релиз иначе, чем написано в профиле. Сравниваем по
+  // каноническому ключу (см. `canonicalizeTag` в `../lib/tags.ts`), а не по
+  // точной строке — иначе совпадение молча терялось бы всякий раз, когда
+  // написания расходятся.
+  const weightByCanonicalTag = new Map<string, number>();
+  for (const [tag, weight] of Object.entries(bucket.tags)) {
+    const key = canonicalizeTag(tag);
+    // Если профиль (руками) содержит два написания одного тега — берём
+    // большее, а не складываем: это по-прежнему ОДИН тег, суммирование
+    // задвоило бы сигнал совпадения без всякого основания.
+    const existing = weightByCanonicalTag.get(key);
+    if (existing === undefined || weight > existing) weightByCanonicalTag.set(key, weight);
+  }
+  const stopTagsCanonical = new Set(bucket.stopTags.map(canonicalizeTag));
+
   const matched = tags
-    .map((tag) => ({ tag, weight: bucket.tags[tag] ?? 0 }))
+    .map((tag) => ({ tag, weight: weightByCanonicalTag.get(canonicalizeTag(tag)) ?? 0 }))
     .filter((entry) => entry.weight > 0)
     .sort((a, b) => b.weight - a.weight);
   const tagScore = matched.reduce((sum, entry) => sum + entry.weight, 0);
 
-  const stopHits = tags.filter((tag) => bucket.stopTags.includes(tag)).length;
+  const stopHits = tags.filter((tag) => stopTagsCanonical.has(canonicalizeTag(tag))).length;
   if (tagScore < MATCH_FLOOR || (stopHits > 0 && tagScore < STRONG_MATCH)) {
     // reasons: [] — см. комментарий на поле в ScoreResult: при отбраковке
     // совпавшие теги не годятся в «почему это тебе».

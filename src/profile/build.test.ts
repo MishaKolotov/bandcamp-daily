@@ -193,6 +193,75 @@ test('словарь локаций не задевает теги, которы
   assert.ok(profile.buckets['hardcore-punk'].tags['post-punk']! > 0);
 });
 
+test('словарь локаций ловит тег места и через дефис, и слитно — не только буквальным написанием', () => {
+  // Сравнение с локационным словарём идёт по каноническому ключу (см.
+  // ../lib/tags.ts), как и все остальные места сравнения тегов — тег
+  // 'new-york' обязан так же попасть под словарь 'new york', как и
+  // буквальное совпадение.
+  const releases: ProfileInput[] = [
+    ...Array.from({ length: 8 }, () => release({ tags: ['hardcore punk', 'new-york'] })),
+    ...Array.from({ length: 2 }, () => release({ tags: ['hardcore punk'] })),
+    ...Array.from({ length: 10 }, () => release({ tags: ['crust'] })),
+  ];
+  const profile = buildProfile(releases, {
+    now: new Date('2026-08-03'),
+    minReleases: 2,
+    locationVocabulary: new Set(['new york']),
+  });
+  assert.equal(profile.buckets['hardcore-punk'].tags['new-york'], undefined);
+  assert.equal(profile.buckets['hardcore-punk'].tags['newyork'], undefined);
+});
+
+test('дилюция: один жанр под тремя написаниями пулится в один тег с суммарным весом, а не в три', () => {
+  // Прямое воспроизведение реальной дилюции с живого прогона (2026-08,
+  // краст-бакет data/profile.json ДО этой задачи): 'dbeat', 'd-beat',
+  // 'crust punk', 'crustpunk', 'rawpunk' и 'raw punk' — пять отдельных
+  // ключей на три жанра, каждый со своим урезанным весом ('raw punk' 1,
+  // 'rawpunk' 0.2927 — тот же тег, два разных числа). Синтетический аналог
+  // здесь — именно 'raw punk' (НЕ seed-тег бакета crust, в отличие от
+  // 'd-beat'/'crust punk' — так тест бьёт по ветке over-representation, а
+  // не по фиксированному seed-весу 0.5).
+  const releases: ProfileInput[] = [
+    ...Array.from({ length: 4 }, () => release({ tags: ['crust', 'raw punk'] })),
+    ...Array.from({ length: 3 }, () => release({ tags: ['crust', 'rawpunk'] })),
+    ...Array.from({ length: 2 }, () => release({ tags: ['crust', 'raw-punk'] })),
+    // Контрастная популяция вне crust — без неё over-representation
+    // 'raw punk' вышел бы ровно 1 (тег был бы 100% и внутри бакета, и по
+    // всей коллекции), см. комментарий у overRepresentation в build.ts.
+    ...Array.from({ length: 5 }, () => release({ tags: ['hardcore punk'] })),
+  ];
+  const profile = buildProfile(releases, { now: new Date('2026-08-03'), minReleases: 2 });
+  const tags = profile.buckets.crust.tags;
+
+  const rawPunkVariants = ['raw punk', 'rawpunk', 'raw-punk'];
+  const survivingKeys = Object.keys(tags).filter((tag) => rawPunkVariants.includes(tag));
+  assert.equal(
+    survivingKeys.length,
+    1,
+    `ожидали ровно один пул тега raw punk, получили: ${survivingKeys.join(', ') || '(ничего)'}`,
+  );
+  // Пул из 9 релизов (4+3+2) — единственный не-опорный тег в этом тесте,
+  // так что после нормализации он обязан оказаться максимумом шкалы.
+  assert.equal(tags[survivingKeys[0]!], 1);
+});
+
+test('дилюция: самое частое написание побеждает как display-ключ пула', () => {
+  const releases: ProfileInput[] = [
+    ...Array.from({ length: 5 }, () => release({ tags: ['crust', 'crust punk'] })),
+    ...Array.from({ length: 3 }, () => release({ tags: ['crust', 'crustpunk'] })),
+    ...Array.from({ length: 2 }, () => release({ tags: ['crust', 'crust-punk'] })),
+    ...Array.from({ length: 5 }, () => release({ tags: ['hardcore punk'] })),
+  ];
+  const profile = buildProfile(releases, { now: new Date('2026-08-03'), minReleases: 2 });
+  const tags = profile.buckets.crust.tags;
+  // 'crust punk' — seed-тег бакета (см. buckets.ts), поэтому вес
+  // фиксирован на 0.5 независимо от частоты — тест проверяет ВЫБОР
+  // написания-ключа, не вес.
+  assert.equal(tags['crust punk'], 0.5, 'самое частое написание (5 из 10) должно стать ключом');
+  assert.equal(tags['crustpunk'], undefined);
+  assert.equal(tags['crust-punk'], undefined);
+});
+
 test('редкий тег отбрасывается порогом minReleases', () => {
   const profile = buildProfile(
     [

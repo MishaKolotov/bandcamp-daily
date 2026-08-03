@@ -163,6 +163,47 @@ test('тот же счётчик при меньшей выборке набир
   assert.deepEqual(stop, ['niche-tag']);
 });
 
+test('дилюция: написания хаб-тега пулятся по суммарному счёту, а не проверяются порогом по отдельности', () => {
+  // Без пулинга ни одно из трёх написаний не набирает порог по отдельности
+  // (6, 5, 4 — все ниже порога 10), и стоп-тег молча пропадает целиком —
+  // тот же класс бага, что дилюция весов профиля в build.ts, только на
+  // стороне антипрофиля.
+  const stop = deriveStopTags({
+    hubTagCounts: { 'crust punk': 6, crustpunk: 5, 'crust-punk': 4 },
+    ownedTagCounts: {},
+    seedTags: [],
+    minHubCount: 5,
+    minHubShare: 0.2,
+    releasesSampled: 50, // порог = max(5, 0.2*50=10) = 10
+  });
+  assert.deepEqual(stop, ['crust punk'], 'суммарный счёт 15 проходит порог, самое частое написание (6) — display');
+});
+
+test('дилюция: владение суммируется по написаниям так же, как и хаб-счёт', () => {
+  // Хозяин купил тег под двумя написаниями (1 + 1 = 2) — это уже владение
+  // (порог по умолчанию 2), даже если ни одно написание по отдельности не
+  // достигает порога.
+  const stop = deriveStopTags({
+    hubTagCounts: { 'crust punk': 20 },
+    ownedTagCounts: { 'crust-punk': 1, crustpunk: 1 },
+    seedTags: [],
+    minHubCount: 5,
+    releasesSampled: 50,
+  });
+  assert.deepEqual(stop, []);
+});
+
+test('seed-тег другого написания всё равно исключает канонически совпадающий хаб-тег', () => {
+  const stop = deriveStopTags({
+    hubTagCounts: { crustpunk: 20 },
+    ownedTagCounts: {},
+    seedTags: ['crust-punk'],
+    minHubCount: 5,
+    releasesSampled: 50,
+  });
+  assert.deepEqual(stop, []);
+});
+
 test('порог по доле выборки: ровно на границе — включён, на единицу ниже — нет', () => {
   const stop = deriveStopTags({
     hubTagCounts: { exact: 10, below: 9 },

@@ -55,14 +55,22 @@ interface DiscoverResponse {
 // нижний регистр, пробелы (любой длины) → одиночный дефис. Уже
 // дефисные/однословные теги под это же преобразование проходят без
 // изменений, так что нормализация безопасна для всех вызывающих.
-function toTagNormName(tag: string): string {
+//
+// НЕ путать с `canonicalizeTag` (`../lib/tags.ts`) — та функция вырезает
+// пробел/дефис ПОЛНОСТЬЮ, потому что ей нужен ключ для СРАВНЕНИЯ ('crust
+// punk' и 'crustpunk' — один и тот же тег). Этой функции, наоборот, дефис
+// между словами нужен: Bandcamp принимает слаг только с ним, слитное
+// написание сюда не годится. Два разных требования к одному и тому же
+// исходному тегу — два разных преобразования, с разными именами, ни одно
+// не переиспользует другое.
+function toDiscoverSlug(tag: string): string {
   return tag.trim().toLowerCase().replace(/\s+/g, '-');
 }
 
 export async function discover(http: Http, options: DiscoverOptions): Promise<DiscoverItem[]> {
   const body = await http.postJson<DiscoverResponse>(ENDPOINT, {
     category_id: 0,
-    tag_norm_names: [toTagNormName(options.tag)],
+    tag_norm_names: [toDiscoverSlug(options.tag)],
     geoname_id: 0,
     slice: options.slice,
     time_facet_id: null,

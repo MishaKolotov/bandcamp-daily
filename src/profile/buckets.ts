@@ -1,4 +1,5 @@
 import type { BucketId } from '../bandcamp/types.ts';
+import { canonicalizeTag } from '../lib/tags.ts';
 
 export interface BucketDef {
   id: BucketId;
@@ -18,26 +19,27 @@ export const BUCKETS: readonly BucketDef[] = Object.freeze([
     id: 'crust' as const,
     channelTitle: 'CRUST DAILY',
     channelEnv: 'CRUST_CHANNEL_ID',
-    seedTags: Object.freeze([
-      'crust',
-      'crust punk',
-      'crustpunk',
-      'd-beat',
-      'dbeat',
-      'stenchcore',
-      'neocrust',
-    ]),
+    // Написания-варианты ('crustpunk', 'dbeat') отсюда убраны: тег теперь
+    // сравнивается по каноническому ключу (`canonicalizeTag` в
+    // `../lib/tags.ts`, пробел/дефис/слитно — один и тот же тег), так что
+    // держать все три написания в списке вручную избыточно и рискует
+    // разъехаться, если кто-то дополнит только один вариант. Список ниже —
+    // по одному человекочитаемому написанию на жанр, в общепринятой форме
+    // (Wikipedia: «Crust punk», «D-beat»).
+    seedTags: Object.freeze(['crust', 'crust punk', 'd-beat', 'stenchcore', 'neocrust']),
   }),
   Object.freeze({
     id: 'death-metal' as const,
     channelTitle: 'DEATH METAL DAILY',
     channelEnv: 'DEATH_METAL_CHANNEL_ID',
+    // 'death-doom' и 'death doom' были двумя записями одного канонического
+    // тега — см. комментарий у crust.seedTags выше про canonicalizeTag.
+    // Оставлено принятое написание (Wikipedia: «Death-doom»).
     seedTags: Object.freeze([
       'death metal',
       'osdm',
       'old school death metal',
       'death-doom',
-      'death doom',
       'brutal death metal',
     ]),
   }),
@@ -60,15 +62,14 @@ export const BUCKETS: readonly BucketDef[] = Object.freeze([
     // 'straight edge' вдобавок теговый омоним (пересекается с metalcore).
     // Не дополнять "для ровного счёта" — недостающее вытянут derived-веса
     // из данных, а хозяин всё равно проверяет профиль руками.
-    seedTags: Object.freeze([
-      'hardcore punk',
-      'hardcore-punk',
-      'powerviolence',
-      'raw punk',
-      'ukhc',
-      'punk',
-      'hardcore',
-    ]),
+    //
+    // 'hardcore-punk' (дефисный вариант) убран как избыточная запись того же
+    // канонического тега, что и 'hardcore punk' — см. canonicalizeTag в
+    // ../lib/tags.ts. Голые 'punk' и 'hardcore' НЕ схлопываются с 'hardcore
+    // punk' канонизацией (разное число слов после вырезания разделителя,
+    // см. тест в lib/tags.test.ts) — это то же самое разделение, которого
+    // просил хозяин, и оно остаётся в силе.
+    seedTags: Object.freeze(['hardcore punk', 'powerviolence', 'raw punk', 'ukhc', 'punk', 'hardcore']),
   }),
   Object.freeze({
     id: 'black-metal' as const,
@@ -94,12 +95,17 @@ export const BUCKETS: readonly BucketDef[] = Object.freeze([
  * Это не классификация "релиз принадлежит одному бакету" — релиз может
  * питать статистику нескольких бакетов сразу (кроссовер crust/hardcore —
  * обычное дело в этой коллекции). Пустой массив, если совпадений нет.
+ *
+ * Сравнение — по каноническому ключу (`canonicalizeTag`, см. `../lib/tags.ts`):
+ * релиз, тегированный Bandcamp как 'crustpunk' или 'crust-punk', обязан
+ * попасть в бакет так же надёжно, как и 'crust punk' — это ровно тот же тег,
+ * просто иначе набранный.
  */
 export function bucketsOf(tags: string[]): BucketId[] {
-  const normalized = new Set(tags.map((tag) => tag.toLowerCase()));
+  const normalized = new Set(tags.map(canonicalizeTag));
   const result: BucketId[] = [];
   for (const bucket of BUCKETS) {
-    const hasHit = bucket.seedTags.some((tag) => normalized.has(tag.toLowerCase()));
+    const hasHit = bucket.seedTags.some((tag) => normalized.has(canonicalizeTag(tag)));
     if (hasHit) result.push(bucket.id);
   }
   return result;
