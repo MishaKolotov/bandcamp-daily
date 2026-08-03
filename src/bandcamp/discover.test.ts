@@ -53,6 +53,28 @@ test('тег и слайс уходят в тело запроса', async () =>
   });
 });
 
+test('человекочитаемый тег с пробелами уходит в API как дефисный слаг', async () => {
+  // Живой прогон 2026-08 показал: tag_norm_names с буквальным пробелом
+  // ('black metal', 'old school death metal', 'raw black metal') отдаёт
+  // result_count: 0, а дефисный слаг того же тега — рабочий непустой хаб.
+  // Значит нормализовать нужно до отправки, а не полагаться на вызывающих.
+  const { http, bodies } = stub({ results: [result], result_count: 1 });
+  await discover(http, { tag: 'old school death metal', slice: 'top' });
+  assert.deepEqual((bodies[0] as { tag_norm_names: string[] }).tag_norm_names, ['old-school-death-metal']);
+});
+
+test('регистр и лишние пробелы по краям тоже нормализуются', async () => {
+  const { http, bodies } = stub({ results: [result], result_count: 1 });
+  await discover(http, { tag: '  Black  Metal  ', slice: 'top' });
+  assert.deepEqual((bodies[0] as { tag_norm_names: string[] }).tag_norm_names, ['black-metal']);
+});
+
+test('уже дефисный тег уходит без изменений', async () => {
+  const { http, bodies } = stub({ results: [result], result_count: 1 });
+  await discover(http, { tag: 'd-beat', slice: 'top' });
+  assert.deepEqual((bodies[0] as { tag_norm_names: string[] }).tag_norm_names, ['d-beat']);
+});
+
 test('служебный from=discover_page отрезается от ссылки', async () => {
   const { http } = stub({ results: [result], result_count: 1 });
   const [first] = await discover(http, { tag: 'crust', slice: 'new' });

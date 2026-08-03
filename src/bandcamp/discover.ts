@@ -32,10 +32,27 @@ interface DiscoverResponse {
   error_message?: string;
 }
 
+// Живой прогон (2026-08) на реальной коллекции хозяина: хаб-запросы с
+// человекочитаемым тегом как есть (пробел) молча возвращали 0 результатов —
+// 'crust punk', 'hardcore punk', 'raw punk', 'black metal', 'raw black
+// metal', 'atmospheric black metal' — тогда как 'd-beat', 'crust',
+// 'death-doom', 'hardcore-punk' (уже без пробелов) отвечали нормально.
+// Проверено экспериментом (3 пары человек/слаг, живые запросы к
+// discover_web, size:5): 'old school death metal' → result_count 0,
+// 'old-school-death-metal' → 5037; 'black metal' → 0, 'black-metal' →
+// 151998; 'raw black metal' → 0, 'raw-black-metal' → 20552. Правило —
+// tag_norm_names ждёт ровно тот слаг, что в URL /tag/<слаг> на Bandcamp:
+// нижний регистр, пробелы (любой длины) → одиночный дефис. Уже
+// дефисные/однословные теги под это же преобразование проходят без
+// изменений, так что нормализация безопасна для всех вызывающих.
+function toTagNormName(tag: string): string {
+  return tag.trim().toLowerCase().replace(/\s+/g, '-');
+}
+
 export async function discover(http: Http, options: DiscoverOptions): Promise<DiscoverItem[]> {
   const body = await http.postJson<DiscoverResponse>(ENDPOINT, {
     category_id: 0,
-    tag_norm_names: [options.tag],
+    tag_norm_names: [toTagNormName(options.tag)],
     geoname_id: 0,
     slice: options.slice,
     time_facet_id: null,
