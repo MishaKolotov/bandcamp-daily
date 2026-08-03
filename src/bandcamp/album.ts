@@ -18,8 +18,21 @@ function toIsoDate(raw: string | undefined): string | null {
   return parsed.toISOString().slice(0, 10);
 }
 
+/**
+ * При селф-релизе Bandcamp пишет в publisher.name то же имя, что и в byArtist.name.
+ * Если считать это лейблом, профиль вкуса накопит веса по именам артистов вместо
+ * реальных лейблов, и лейбл-бонус в score.ts выродится в дубликат тегового сигнала.
+ */
+function resolveLabel(artist: string, publisherName: string | undefined): string | null {
+  if (!publisherName) return null;
+  if (publisherName.trim().toLowerCase() === artist.trim().toLowerCase()) return null;
+  return publisherName;
+}
+
 export function parseAlbumPage(html: string): AlbumDetails {
-  const match = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(html);
+  const match = /<script\b[^>]*\btype=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/.exec(
+    html,
+  );
   if (!match?.[1]) throw new Error('на странице релиза нет блока ld+json');
   let data: LdJson;
   try {
@@ -27,10 +40,11 @@ export function parseAlbumPage(html: string): AlbumDetails {
   } catch {
     throw new Error('блок ld+json на странице релиза не разобрался');
   }
+  const artist = data.byArtist?.name ?? '';
   return {
     title: data.name ?? '',
-    artist: data.byArtist?.name ?? '',
-    label: data.publisher?.name ?? null,
+    artist,
+    label: resolveLabel(artist, data.publisher?.name),
     tags: (data.keywords ?? []).map((tag) => tag.trim().toLowerCase()).filter(Boolean),
     releasedAt: toIsoDate(data.datePublished),
     artUrl: data.image ?? null,
@@ -40,12 +54,22 @@ export function parseAlbumPage(html: string): AlbumDetails {
 /**
  * Страница релиза не меняется, поэтому кэшируется навсегда.
  * Возвращает null, если страница недоступна или не разобралась — один битый
- * релиз не должен ронять весь запуск.
+ * релиз не должен ронять весь запуск. Сетевой сбой (мёртвый релиз, 404) — это
+ * ожидаемо и тихо; поломка формата ld+json — нет, поэтому она видна в логе:
+ * если Bandcamp сменит вёрстку, парсер начнёт падать на каждой странице, и без
+ * этого лога запуск молча опустеет без объяснений.
  */
 export async function fetchAlbum(http: Http, url: string): Promise<AlbumDetails | null> {
+  let html: string;
   try {
-    return parseAlbumPage(await http.getText(url, { cache: true }));
+    html = await http.getText(url, { cache: true });
   } catch {
+    return null;
+  }
+  try {
+    return parseAlbumPage(html);
+  } catch (error) {
+    console.error(`не удалось разобрать страницу релиза ${url}:`, error);
     return null;
   }
 }
