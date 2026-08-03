@@ -113,3 +113,31 @@ test('getUpdates по умолчанию использует длинный о�
   const body = calls[0]?.body as { timeout: number };
   assert.ok(body.timeout > 0, `ожидался ненулевой timeout, получили ${body.timeout}`);
 });
+
+test('editMessageText уходит с текстом и опциональной клавиатурой', async () => {
+  const { telegram, calls } = stub({ ok: true, result: true });
+  await telegram.editMessageText({
+    chat_id: '1',
+    message_id: 5,
+    text: 'новый текст',
+    reply_markup: { inline_keyboard: [[{ text: 'ok', callback_data: 'x' }]] },
+  });
+  assert.equal(calls[0]?.url, 'https://api.telegram.org/botTOKEN/editMessageText');
+  const body = calls[0]?.body as { text: string; reply_markup: { inline_keyboard: unknown[][] } };
+  assert.equal(body.text, 'новый текст');
+  assert.equal(body.reply_markup.inline_keyboard.length, 1);
+});
+
+test('нечитаемый ответ (5xx с не-JSON телом) превращается в TelegramApiError, а не роняет SyntaxError', async () => {
+  const impl = (async () => new Response('<html>Bad Gateway</html>', { status: 502 })) as unknown as typeof fetch;
+  const telegram = new Telegram('TOKEN', impl);
+  await assert.rejects(
+    () => telegram.sendMessage({ chat_id: '1', text: 'x' }),
+    (error: unknown) => {
+      assert.ok(error instanceof TelegramApiError);
+      assert.equal(error.errorCode, 502);
+      assert.equal(error.recoverable, true);
+      return true;
+    },
+  );
+});

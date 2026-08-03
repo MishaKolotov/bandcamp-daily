@@ -16,6 +16,15 @@ export interface TelegramUpdate {
   };
 }
 
+/** Заменяет устаревший disable_web_page_preview (Bot API 7.0+). */
+export interface LinkPreviewOptions {
+  is_disabled?: boolean;
+  url?: string;
+  prefer_small_media?: boolean;
+  prefer_large_media?: boolean;
+  show_above_text?: boolean;
+}
+
 /**
  * Ошибка вызова Bot API. Несёт достаточно данных, чтобы вызывающий код (ежедневный
  * джоб) отличил временный сбой от постоянного и понял, какому получателю не ушло
@@ -73,13 +82,28 @@ export class Telegram {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    const body = (await response.json()) as {
+    let body: {
       ok: boolean;
       result?: T;
       description?: string;
       error_code?: number;
       parameters?: { retry_after?: number };
     };
+    try {
+      body = await response.json();
+    } catch {
+      // Не JSON — прокси или сам Telegram отдали, например, HTML-страницу с 5xx.
+      // Заворачиваем в тот же типизированный класс ошибки: без этого во время
+      // двухчасового опроса джоб падает от сырого SyntaxError вместо понятного
+      // recoverable-сигнала, HTTP-статус вместо error_code — больше опереться не на что.
+      throw new TelegramApiError(
+        method,
+        `не удалось разобрать ответ (HTTP ${response.status})`,
+        response.status,
+        undefined,
+        extractChatId(payload),
+      );
+    }
     if (!body.ok) {
       throw new TelegramApiError(
         method,
@@ -97,7 +121,7 @@ export class Telegram {
     text: string;
     parse_mode?: 'HTML';
     reply_markup?: InlineKeyboard;
-    disable_web_page_preview?: boolean;
+    link_preview_options?: LinkPreviewOptions;
   }): Promise<{ message_id: number }> {
     return this.#call('sendMessage', payload);
   }
@@ -139,5 +163,20 @@ export class Telegram {
     reply_markup?: InlineKeyboard;
   }): Promise<unknown> {
     return this.#call('editMessageCaption', payload);
+  }
+
+  /**
+   * Для карточек без обложки (отправленных через sendMessage, без caption) —
+   * editMessageCaption на таком сообщении Telegram отклоняет. Какой из двух методов
+   * звать — решает вызывающий код, этот модуль просто предоставляет оба.
+   */
+  editMessageText(payload: {
+    chat_id: string | number;
+    message_id: number;
+    text: string;
+    parse_mode?: 'HTML';
+    reply_markup?: InlineKeyboard;
+  }): Promise<unknown> {
+    return this.#call('editMessageText', payload);
   }
 }
