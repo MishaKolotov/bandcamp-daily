@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BUCKETS, bucketsOf } from './buckets.ts';
+import { BUCKETS, bucketsOf, hubSampleTags, type BucketDef } from './buckets.ts';
 
 test('описаны ровно четыре бакета с каналами', () => {
   assert.deepEqual(
@@ -50,4 +50,34 @@ test('голые punk и hardcore относят релиз в hardcore-punk', (
 test('релиз чёрного металла попадает в бакет black-metal', () => {
   assert.deepEqual(bucketsOf(['black metal', 'raw']), ['black-metal']);
   assert.deepEqual(bucketsOf(['raw black metal']), ['black-metal']);
+});
+
+test('hubSampleTags предпочитает составные seed-теги голым однословным', () => {
+  const hardcorePunk = BUCKETS.find((b) => b.id === 'hardcore-punk')!;
+  const picked = hubSampleTags(hardcorePunk, 3);
+  assert.equal(picked.length, 3);
+  // Голые 'punk' и 'hardcore' — Bandcamp-омонимы с хабом на сотни тысяч
+  // релизов (см. живой прогон); хаб-сэмплирование не должно их трогать,
+  // пока есть составные seed-теги того же бакета.
+  assert.ok(!picked.includes('punk'), `punk не должен попасть в хаб-сэмпл: ${picked}`);
+  assert.ok(!picked.includes('hardcore'), `hardcore не должен попасть в хаб-сэмпл: ${picked}`);
+  for (const tag of picked) {
+    assert.ok(/[\s-]/.test(tag), `хаб-тег "${tag}" должен быть составным`);
+  }
+});
+
+test('hubSampleTags добирает голые теги, если составных не хватает до limit', () => {
+  const thin: BucketDef = {
+    id: 'crust',
+    channelTitle: 'TEST',
+    channelEnv: 'TEST_CHANNEL_ID',
+    seedTags: Object.freeze(['onlybareword', 'also bare-ish']),
+  };
+  const picked = hubSampleTags(thin, 3);
+  assert.deepEqual(picked, ['also bare-ish', 'onlybareword']);
+});
+
+test('hubSampleTags уважает limit', () => {
+  const deathMetal = BUCKETS.find((b) => b.id === 'death-metal')!;
+  assert.equal(hubSampleTags(deathMetal, 2).length, 2);
 });

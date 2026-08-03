@@ -18,14 +18,29 @@ import { writeJson } from '../src/lib/state.ts';
 import { fetchAlbum } from '../src/bandcamp/album.ts';
 import { fetchFanItems } from '../src/bandcamp/fan.ts';
 import { discover } from '../src/bandcamp/discover.ts';
-import { BUCKETS, bucketsOf } from '../src/profile/buckets.ts';
+import { BUCKETS, bucketsOf, hubSampleTags } from '../src/profile/buckets.ts';
 import { buildProfile, type ProfileInput } from '../src/profile/build.ts';
 import { deriveStopTags } from '../src/profile/stop-tags.ts';
 
 const OWNER_FAN_ID = 7566215;
 /** Сколько релизов тег-хаба запрашивать на один хаб-тег. */
 const HUB_SAMPLE_SIZE = 60;
-/** Сколько самых характерных тегов бакета используется как хаб-теги для антипрофиля. */
+/**
+ * Сколько seed-тегов бакета используется как хаб-теги для антипрофиля —
+ * см. `hubSampleTags` в `src/profile/buckets.ts`. Раньше здесь были не
+ * seed-, а самые тяжёлые ДЕРИВИРОВАННЫЕ теги бакета — и живой прогон
+ * (2026-08) показал цену: для hardcore-punk и crust это оказался голый
+ * 'punk' (хаб — 470000 релизов), для death-metal — 'metal' (496000), а
+ * иногда деривированный топ вообще вытягивал тег города. Сэмпл 60 из
+ * хаба такого размера или из городского хаба описывает Bandcamp вообще
+ * или конкретный город, а не жанр по соседству — этим и объясняются
+ * пустые стоп-листы во всех трёх бакетах на живом прогоне. Seed-теги —
+ * рукописный, стабильный между прогонами список жанровых маркеров, а
+ * hubSampleTags внутри ещё и предпочитает среди них составные
+ * (специфичные) голым однословным, так что тот же голый 'punk'/'hardcore'
+ * в хаб-сэмплирование не пройдёт, даже после того как их вернули в
+ * seedTags бакета hardcore-punk по решению хозяина.
+ */
 const HUB_TAGS_PER_BUCKET = 3;
 /** Ниже этого числа релизов бакет считается слишком тонким — предупреждение в вывод. */
 const MIN_RELEASES_WARN = 10;
@@ -101,13 +116,7 @@ const profile = buildProfile(inputs, { now: new Date(), minReleases: 2 });
 console.log('\nСобираю антипрофиль из тег-хабов Discover (для стоп-тегов)...');
 for (const bucket of BUCKETS) {
   const hubTagCounts: Record<string, number> = {};
-  const topBucketTags = Object.entries(profile.buckets[bucket.id].tags)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, HUB_TAGS_PER_BUCKET)
-    .map(([tag]) => tag);
-  // Если у бакета ещё нет собственных характерных тегов (тонкая коллекция),
-  // сэмплируем хаб по его же seed-тегам — иначе антипрофиль строить не из чего.
-  const hubTags = topBucketTags.length > 0 ? topBucketTags : bucket.seedTags.slice(0, 2);
+  const hubTags = hubSampleTags(bucket, HUB_TAGS_PER_BUCKET);
 
   let releasesSampled = 0;
   for (const tag of hubTags) {
@@ -122,6 +131,16 @@ for (const bucket of BUCKETS) {
     }
   }
 
+  // minHubShare/minHubCount умышленно не переданы — берём дефолты
+  // deriveStopTags (0.2 доли, пол 5). Смена источника хаб-тегов (см. выше)
+  // не меняет ни число хабов на бакет (HUB_TAGS_PER_BUCKET всё те же 3),
+  // ни размер каждого (HUB_SAMPLE_SIZE всё те же 60) — пул как был
+  // 60-180 сэмплированных релизов, так и остался, а именно под этот
+  // диапазон калибровался порог 0.2 (см. комментарий у minHubShare в
+  // stop-tags.ts). Пустые стоп-листы живого прогона были следствием
+  // мусорного ВХОДА (мега-хаб 'punk'/'metal' или город вместо жанра), а
+  // не порога — так что чиним вход (hubSampleTags), а не занижаем порог,
+  // подгоняя его под то, чтобы что-нибудь да выпало.
   profile.buckets[bucket.id].stopTags = deriveStopTags({
     hubTagCounts,
     ownedTags,
