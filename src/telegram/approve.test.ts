@@ -1,9 +1,24 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import type { Candidate } from '../bandcamp/types.ts';
+import type { BucketId, Candidate } from '../bandcamp/types.ts';
+import { BUCKETS } from '../profile/buckets.ts';
 import { TelegramApiError } from './api.ts';
 import { parseCallback } from './card.ts';
 import { handleUpdates, type ApproveDeps, type ApproveState, type CardEdit } from './approve.ts';
+
+/**
+ * Веса тегов по бакету для `handleUpdates` (нужны только `handlePost` →
+ * `buildChannelPost`, см. `../pipeline/daily.ts`) — большинство тестов в этом
+ * файле проверяют роутинг нажатий (post/skip/next), а не содержимое поста в
+ * канал, так что фикстура нарочно тривиальная: у каждого бакета опорный тег
+ * 'crust' взвешен, чтобы `buildChannelPost` не падал и не давал пустую
+ * строку хэштегов молча — этого достаточно для тестов, которым содержимое
+ * поста в канал не важно.
+ */
+const bucketTags = {} as Record<BucketId, Record<string, number>>;
+for (const bucket of BUCKETS) {
+  bucketTags[bucket.id] = { crust: 0.5 };
+}
 
 const candidate = (itemId: number, over: Partial<Candidate> = {}): Candidate => ({
   itemId,
@@ -81,7 +96,7 @@ const callback = (updateId: number, data: string) => ({
 test('нажатие «в канал» публикует и записывает в posted по URL', async () => {
   const s = state();
   const d = deps();
-  await handleUpdates([callback(5, 'post|crust|1')], s, d);
+  await handleUpdates([callback(5, 'post|crust|1')], s, d, bucketTags);
   assert.ok(d.log.some((entry) => entry.startsWith('post:crust')));
   assert.equal(s.posted.length, 1);
   assert.equal(s.posted[0]?.itemId, 1);
@@ -92,7 +107,7 @@ test('нажатие «в канал» публикует и записывае�
 test('после публикации карточка закрывается без кнопок', async () => {
   const s = state();
   const d = deps();
-  await handleUpdates([callback(5, 'post|crust|1')], s, d);
+  await handleUpdates([callback(5, 'post|crust|1')], s, d, bucketTags);
   assert.ok(d.log.some((entry) => entry === 'close:100:false:0'));
 });
 
@@ -100,7 +115,7 @@ test('скип копит штраф по тегам, но не по опорн�
   const s = state();
   s.pending[0]!.candidate.tags = ['crust', 'raw'];
   const d = deps();
-  await handleUpdates([callback(5, 'skip|crust|1')], s, d);
+  await handleUpdates([callback(5, 'skip|crust|1')], s, d, bucketTags);
   assert.ok(!d.log.some((entry) => entry.startsWith('post:')));
   assert.equal(s.feedbackTags['crust'], undefined, 'опорный тег бакета не должен штрафоваться');
   assert.equal(s.feedbackTags['raw'], 1);
@@ -110,14 +125,14 @@ test('скип копит штраф по тегам, но не по опорн�
 test('скип релиза с одним лишь опорным тегом не пишет вообще никакого штрафа', async () => {
   const s = state();
   s.pending[0]!.candidate.tags = ['crust'];
-  await handleUpdates([callback(5, 'skip|crust|1')], s, deps());
+  await handleUpdates([callback(5, 'skip|crust|1')], s, deps(), bucketTags);
   assert.deepEqual(s.feedbackTags, {});
 });
 
 test('«другой» подменяет карточку следующим кандидатом', async () => {
   const s = state();
   const d = deps();
-  await handleUpdates([callback(5, 'next|crust|1')], s, d);
+  await handleUpdates([callback(5, 'next|crust|1')], s, d, bucketTags);
   assert.ok(d.log.some((entry) => entry.startsWith('replace:100:false:2')));
   assert.equal(s.pending[0]?.candidate.itemId, 2);
   assert.equal(s.pending[0]?.alternatives.length, 0);
@@ -127,7 +142,7 @@ test('«другой» без запаса кандидатов закрывае
   const s = state();
   s.pending[0]!.alternatives = [];
   const d = deps();
-  await handleUpdates([callback(5, 'next|crust|1')], s, d);
+  await handleUpdates([callback(5, 'next|crust|1')], s, d, bucketTags);
   assert.ok(d.log.some((entry) => entry.startsWith('close:100')));
   assert.equal(s.pending.length, 0);
 });
@@ -140,7 +155,7 @@ test('редактирование зовёт editMessageText/editMessageCaption
   withPhoto.pending[0]!.hasPhoto = true;
   withPhoto.pending[0]!.alternatives = [candidate(2, { artUrl: null })];
   const d1 = deps();
-  await handleUpdates([callback(5, 'next|crust|1')], withPhoto, d1);
+  await handleUpdates([callback(5, 'next|crust|1')], withPhoto, d1, bucketTags);
   assert.ok(d1.log.some((entry) => entry.startsWith('replace:100:true:2')));
 
   // Отправлено как текст (hasPhoto: false), новый кандидат ТЕПЕРЬ с обложкой —
@@ -149,27 +164,27 @@ test('редактирование зовёт editMessageText/editMessageCaption
   withoutPhoto.pending[0]!.hasPhoto = false;
   withoutPhoto.pending[0]!.alternatives = [candidate(2, { artUrl: 'https://x.test/art.jpg' })];
   const d2 = deps();
-  await handleUpdates([callback(5, 'next|crust|1')], withoutPhoto, d2);
+  await handleUpdates([callback(5, 'next|crust|1')], withoutPhoto, d2, bucketTags);
   assert.ok(d2.log.some((entry) => entry.startsWith('replace:100:false:2')));
 });
 
 test('всё показанное попадает в seen по URL, а не по itemId', async () => {
   const s = state();
-  await handleUpdates([callback(5, 'skip|crust|1')], s, deps());
+  await handleUpdates([callback(5, 'skip|crust|1')], s, deps(), bucketTags);
   assert.ok(s.seen.includes('https://x.test/album/1'));
   assert.ok(!s.seen.includes(1 as unknown as string));
 });
 
 test('lastUpdateId двигается, чтобы обновления не обрабатывались дважды', async () => {
   const s = state();
-  await handleUpdates([callback(9, 'skip|crust|1')], s, deps());
+  await handleUpdates([callback(9, 'skip|crust|1')], s, deps(), bucketTags);
   assert.equal(s.lastUpdateId, 9);
 });
 
 test('нажатие по неизвестной карточке подтверждается и игнорируется', async () => {
   const s = state();
   const d = deps();
-  await handleUpdates([callback(5, 'post|crust|999')], s, d);
+  await handleUpdates([callback(5, 'post|crust|999')], s, d, bucketTags);
   assert.ok(d.log.some((entry) => entry.startsWith('ack:')));
   assert.equal(s.posted.length, 0);
   assert.equal(s.pending.length, 1);
@@ -178,7 +193,7 @@ test('нажатие по неизвестной карточке подтвер
 test('битый callback не роняет обработку остальных', async () => {
   const s = state();
   const d = deps();
-  await handleUpdates([callback(4, 'мусор'), callback(5, 'skip|crust|1')], s, d);
+  await handleUpdates([callback(4, 'мусор'), callback(5, 'skip|crust|1')], s, d, bucketTags);
   assert.equal(s.pending.length, 0);
   assert.equal(s.lastUpdateId, 5);
 });
@@ -186,7 +201,7 @@ test('битый callback не роняет обработку остальны�
 test('провал публикации (recoverable — рейт-лимит): карточка остаётся, публикация не засчитана', async () => {
   const s = state();
   const d = failingPostDeps(429, 5);
-  await handleUpdates([callback(5, 'post|crust|1')], s, d);
+  await handleUpdates([callback(5, 'post|crust|1')], s, d, bucketTags);
   assert.equal(s.posted.length, 0);
   assert.equal(s.pending.length, 1, 'карточку нужно оставить — можно нажать ещё раз');
   const ack = d.log.find((entry) => entry.startsWith('ack:'));
@@ -197,7 +212,7 @@ test('провал публикации (recoverable — рейт-лимит): �
 test('провал публикации (misconfiguration — 403): сообщение владельцу отличается от рейт-лимита', async () => {
   const s = state();
   const d = failingPostDeps(403);
-  await handleUpdates([callback(5, 'post|crust|1')], s, d);
+  await handleUpdates([callback(5, 'post|crust|1')], s, d, bucketTags);
   assert.equal(s.posted.length, 0);
   assert.equal(s.pending.length, 1);
   const ack = d.log.find((entry) => entry.startsWith('ack:'));
@@ -208,7 +223,7 @@ test('провал публикации (misconfiguration — 403): сообще
 test('провал публикации 5xx считается recoverable', async () => {
   const s = state();
   const d = failingPostDeps(500);
-  await handleUpdates([callback(5, 'post|crust|1')], s, d);
+  await handleUpdates([callback(5, 'post|crust|1')], s, d, bucketTags);
   const ack = d.log.find((entry) => entry.startsWith('ack:'));
   assert.match(ack ?? '', /ещё раз|повтор/i);
 });
@@ -224,7 +239,7 @@ test('идемпотентность: URL, уже отмеченный опуб�
     postedAt: '2026-08-01',
   });
   const d = deps();
-  await handleUpdates([callback(5, 'post|crust|1')], s, d);
+  await handleUpdates([callback(5, 'post|crust|1')], s, d, bucketTags);
   assert.ok(!d.log.some((entry) => entry.startsWith('post:')), 'postToChannel не должен вызываться повторно');
   assert.equal(s.posted.length, 1, 'запись в posted не должна задваиваться');
   assert.equal(s.pending.length, 0, 'зависшую карточку всё равно нужно убрать из pending');
@@ -233,7 +248,7 @@ test('идемпотентность: URL, уже отмеченный опуб�
 test('идемпотентность: двойное нажатие «в канал» в одном пакете обновлений публикует только один раз', async () => {
   const s = state();
   const d = deps();
-  await handleUpdates([callback(5, 'post|crust|1'), callback(6, 'post|crust|1')], s, d);
+  await handleUpdates([callback(5, 'post|crust|1'), callback(6, 'post|crust|1')], s, d, bucketTags);
   assert.equal(d.log.filter((entry) => entry.startsWith('post:')).length, 1);
   assert.equal(s.posted.length, 1);
 });

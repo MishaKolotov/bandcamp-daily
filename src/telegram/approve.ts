@@ -171,6 +171,7 @@ async function handlePost(
   index: number,
   callbackQueryId: string,
   now: Date,
+  bucketTags: Record<string, number>,
 ): Promise<void> {
   const alreadyPosted = state.posted.some((entry) => entry.url === card.candidate.url);
   if (alreadyPosted) {
@@ -182,7 +183,7 @@ async function handlePost(
   }
 
   try {
-    await deps.postToChannel(card.bucket, buildChannelPost(card.candidate));
+    await deps.postToChannel(card.bucket, buildChannelPost(card.candidate, bucketTags));
   } catch (error) {
     // recoverable (429/5xx) — временный сбой, стоит просто попробовать ещё
     // раз; всё остальное (400/401/403/404 и т.п. или вовсе не TelegramApiError)
@@ -262,11 +263,21 @@ async function handleNext(
  * вызывающий код (ежедневный джоб) сохраняет его в файлы после разбора
  * всей пачки. Сеть и файлы эта функция не трогает вообще — все побочные
  * эффекты идут через `deps`.
+ *
+ * `bucketTagsByBucket` — веса тегов КАЖДОГО бакета (`BucketProfile.tags` из
+ * `../profile/build.ts`, по одному набору на `BucketId`), а не только того,
+ * что упомянут в текущей пачке `updates`: нажатие "в канал" может прийти на
+ * любой из четырёх бакетов, и `handlePost` (см. ниже) узнаёт, какой из них,
+ * только разобрав конкретный callback — до этого не сузить. Обязательный
+ * параметр по той же причине, что и `hardRejectTags` в `score()`
+ * (`../profile/score.ts`): забытый на вызове параметр должен упасть на
+ * `tsc --noEmit`, а не тихо откатить пост в канал на пустые хэштеги.
  */
 export async function handleUpdates(
   updates: TelegramUpdate[],
   state: ApproveState,
   deps: ApproveDeps,
+  bucketTagsByBucket: Record<BucketId, Record<string, number>>,
   now: Date = new Date(),
 ): Promise<void> {
   for (const update of updates) {
@@ -297,7 +308,7 @@ export async function handleUpdates(
 
     try {
       if (parsed.action === 'post') {
-        await handlePost(state, deps, card, index, query.id, now);
+        await handlePost(state, deps, card, index, query.id, now, bucketTagsByBucket[card.bucket]);
       } else if (parsed.action === 'skip') {
         await handleSkip(state, deps, card, index, query.id);
       } else {

@@ -288,10 +288,21 @@ export async function runDaily(
     ack: deps.telegram.ack,
   };
 
+  // Веса тегов каждого бакета — узкий срез `profile.buckets` (только `.tags`,
+  // без stopTags/releaseCount/weightSum), который `handleUpdates` дальше
+  // передаёт в `buildChannelPost` для хэштегов поста (см. комментарий у
+  // `handleUpdates` в `../telegram/approve.ts`). Строится один раз на весь
+  // прогон, а не при каждом вызове `handleUpdates` — профиль не меняется
+  // посреди прогона.
+  const bucketTags = {} as Record<BucketId, Record<string, number>>;
+  for (const bucket of BUCKETS) {
+    bucketTags[bucket.id] = profile.buckets[bucket.id].tags;
+  }
+
   // 1. Разобрать нажатия, накопившиеся со вчера — весь backlog, не одна страница.
   let backlog = await deps.telegram.getUpdates(state.lastUpdateId + 1);
   while (backlog.length > 0) {
-    await handleUpdates(backlog, state, approveDeps, deps.now());
+    await handleUpdates(backlog, state, approveDeps, bucketTags, deps.now());
     await deps.persistState(state);
     backlog = await deps.telegram.getUpdates(state.lastUpdateId + 1);
   }
@@ -419,7 +430,7 @@ export async function runDaily(
   while (state.pending.length > 0 && deps.now().getTime() < until) {
     const updates = await deps.telegram.getUpdates(state.lastUpdateId + 1);
     if (updates.length === 0) continue;
-    await handleUpdates(updates, state, approveDeps, deps.now());
+    await handleUpdates(updates, state, approveDeps, bucketTags, deps.now());
     await deps.persistState(state);
   }
   // Всё, что осталось в state.pending, — карточки у владельца с живыми
