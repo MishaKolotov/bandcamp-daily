@@ -445,3 +445,19 @@ test('URL с кавычкой не ломает атрибут href — кавы
   assert.match(post, /&quot;&gt;&lt;script&gt;/);
   assert.ok(post.startsWith('<a href="https://x.test/album/a&quot;&gt;&lt;script&gt;x&lt;/script&gt;">'));
 });
+
+test('между заголовком и хэштегами в посте есть пустая строка', () => {
+  const post = buildChannelPost(
+    { ...candidate, tags: ['raw punk', 'crust'] },
+    { 'raw punk': 1, crust: 0.5 },
+  );
+  const lines = post.split('\n');
+  assert.equal(lines[1], '', `вторая строка должна быть пустой, получено: ${JSON.stringify(lines)}`);
+  assert.match(lines[2] ?? '', /^#/);
+});
+
+test('без единого жанрового хэштега пост не заканчивается пустой строкой', () => {
+  const post = buildChannelPost({ ...candidate, tags: ['olympia', 'friendship'] }, { crust: 0.5 });
+  assert.ok(!post.endsWith('\n'), 'висящий пустой абзац в конце поста');
+  assert.ok(!post.includes('\n\n'), `лишний отступ: ${JSON.stringify(post)}`);
+});

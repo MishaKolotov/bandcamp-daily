@@ -372,8 +372,12 @@ function body(candidate: Candidate, options: BodyOptions): string {
     : candidate.tags.length > 0
       ? escapeHtml(candidate.tags.slice(0, 8).join(' · '))
       : '';
+  // Пустая строка между заголовком и хэштегами — просьба владельца по виду
+  // живого поста: без неё название и стена решёток слипаются в один блок.
+  // Ставится только там, где хэштеги действительно есть, иначе пост
+  // заканчивался бы висящим пустым абзацем.
   const optional = [
-    tagsLine,
+    tagsLine ? `${options.hashtagBucketTags ? '\n' : ''}${tagsLine}` : '',
     options.includeExplanation ? why(candidate) : '',
     options.includeLabel && candidate.label ? `лейбл: ${escapeHtml(candidate.label)}` : '',
   ].filter(Boolean);
