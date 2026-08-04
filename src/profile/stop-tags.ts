@@ -65,6 +65,22 @@ export interface StopTagInput {
    * ли случайность).
    */
   minOwnedCount?: number;
+  /**
+   * Словарь географических тегов (см. `buildLocationVocabulary` в
+   * `./locations.ts`) — тот же словарь, который `buildProfile` (`./build.ts`)
+   * уже использует, чтобы не давать тегам мест веса в бакете. Тег, ЦЕЛИКОМ
+   * совпавший с записью словаря по каноническому ключу, в стоп-лист не
+   * попадает никогда, даже если хаб-частый и невладеемый — живой прогон
+   * (2026-08) отдал 'amadora' (город в Португалии) хаб-частым (12 из 60) и
+   * невладеемым ровно так же, как настоящий соседний поджанр, а стоп-тег из
+   * имени места штрафовал бы каждый релиз из этого города вообще без
+   * отношения к жанру, см. отчёт по задаче.
+   *
+   * Опционален и по умолчанию не фильтрует ничего — старое поведение (без
+   * гео-фильтрации) сохраняется без изменений, если вызывающий код его не
+   * передаёт.
+   */
+  locationVocabulary?: ReadonlySet<string>;
   limit?: number;
 }
 
@@ -77,14 +93,16 @@ export interface StopTagInput {
  * жанр канала, а не соседний — то, что владелец купил мало релизов с
  * конкретным seed-тегом, не значит, что канал должен себя же штрафовать.
  *
- * Известная слабость: географические теги (город, страна) на Bandcamp не
- * самофильтруются, как это делают жанровые зонтичные теги. То, что
- * владелец ничего не купил из какой-то конкретной страны, не значит, что
- * он не стал бы слушать оттуда death metal — это просто пробел в
- * коллекции, а не вкусовой антипрофиль. Эта функция не отличает
- * географию от жанра (никакого справочника алиасов здесь нет и не будет),
- * так что сгенерированный стоп-лист нужно вручную просматривать на
- * предмет городов и стран, прежде чем доверять профилю.
+ * Географические теги (город, страна) на Bandcamp не самофильтруются, как
+ * это делают жанровые зонтичные теги — то, что владелец ничего не купил из
+ * какой-то конкретной страны, не значит, что он не стал бы слушать оттуда
+ * death metal, это просто пробел в коллекции, а не вкусовой антипрофиль.
+ * Эта функция сама не отличает географию от жанра по форме слова (и не
+ * должна — 'richmond' и 'reading' неотличимы как строки), но принимает
+ * готовый словарь мест через `locationVocabulary` и вычитает его целиком —
+ * см. комментарий там же. Без переданного словаря защиты нет: сгенерированный
+ * стоп-лист в этом случае всё ещё нужно вручную просматривать на предмет
+ * городов и стран, прежде чем доверять профилю.
  *
  * Все три входа (хаб, владение, seed-теги) сравниваются по КАНОНИЧЕСКОМУ
  * ключу тега (см. `canonicalizeTag` в `../lib/tags.ts`), не по точной
@@ -108,6 +126,9 @@ export function deriveStopTags(input: StopTagInput): string[] {
     ownedCounts.set(key, (ownedCounts.get(key) ?? 0) + count);
   }
   const seedCanonical = new Set(input.seedTags.map(canonicalizeTag));
+  const locationCanonical = input.locationVocabulary
+    ? new Set([...input.locationVocabulary].map(canonicalizeTag))
+    : undefined;
 
   /** Канонический тег хаба → суммарный счёт + написание → его собственный счёт (для display). */
   interface HubGroup {
@@ -130,6 +151,7 @@ export function deriveStopTags(input: StopTagInput): string[] {
     .filter(([, group]) => group.count >= threshold)
     .filter(([key]) => (ownedCounts.get(key) ?? 0) < minOwnedCount)
     .filter(([key]) => !seedCanonical.has(key))
+    .filter(([key]) => !locationCanonical?.has(key))
     .sort((a, b) => b[1].count - a[1].count)
     .slice(0, limit)
     .map(([, group]) => pickDisplaySpelling(group.spellings));
@@ -153,6 +175,7 @@ export interface BucketStopTagInput {
   hubs: readonly HubStopTagSample[];
   ownedTagCounts: Record<string, number>;
   seedTags: readonly string[];
+  locationVocabulary?: ReadonlySet<string>;
   minHubCount?: number;
   minHubShare?: number;
   minOwnedCount?: number;
@@ -206,6 +229,7 @@ export function deriveStopTagsForBucket(input: BucketStopTagInput): string[] {
       ownedTagCounts: input.ownedTagCounts,
       seedTags: input.seedTags,
       releasesSampled: hub.releasesSampled,
+      locationVocabulary: input.locationVocabulary,
       minHubCount: input.minHubCount,
       minHubShare: input.minHubShare,
       minOwnedCount: input.minOwnedCount,
