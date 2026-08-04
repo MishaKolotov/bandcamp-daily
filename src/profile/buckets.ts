@@ -32,16 +32,25 @@ export const BUCKETS: readonly BucketDef[] = Object.freeze([
     id: 'death-metal' as const,
     channelTitle: 'DEATH METAL DAILY',
     channelEnv: 'DEATH_METAL_CHANNEL_ID',
-    // 'death-doom' и 'death doom' были двумя записями одного канонического
-    // тега — см. комментарий у crust.seedTags выше про canonicalizeTag.
-    // Оставлено принятое написание (Wikipedia: «Death-doom»).
     // 'brutal death metal' убран из опорных по данным живого прогона: в
     // коллекции владельца таких релизов ноль, зато в хабе дэт-метала тег
     // встречается на 27 релизах из 60. Как опорный он объявлял бы жанром
     // канала то, чего владелец не слушает, и заодно блокировал сам себя от
     // попадания в стоп-лист — семейство брутал/слэм именно поэтому и должно
     // отсекаться антипрофилем, а не притягиваться.
-    seedTags: Object.freeze(['death metal', 'osdm', 'old school death metal', 'death-doom']),
+    // 'death-doom' убран той же проверкой, но по другой причине: это не
+    // ложный сигнал (как 'brutal death metal'), а фантомный тег — в реальном
+    // data/profile.json (2026-08) его нет вовсе, ни под одним написанием,
+    // ни с каким весом. У owner'а просто нет ни одного релиза с этим тегом
+    // (или он есть в количестве меньше minReleases), так что тег не пережил
+    // порог в buildProfile и никогда не попадёт в bucketProfile.tags.
+    // Опорный тег в этом состоянии — не нейтральная деталь: релиз, несущий
+    // ТОЛЬКО его, матчится с весом 0 (в bucket.tags такого ключа нет) и
+    // получает total 0 — отбраковывается, хотя MATCH_FLOOR в score.ts
+    // прямым текстом рассчитан на то, что «релиз с одним лишь опорным тегом
+    // проходит порог». Тот же класс проблемы, тот же диагноз, что и у
+    // 'brutal death metal' — см. отчёт по задаче.
+    seedTags: Object.freeze(['death metal', 'osdm', 'old school death metal']),
   }),
   Object.freeze({
     id: 'hardcore-punk' as const,
