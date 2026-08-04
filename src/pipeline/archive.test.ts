@@ -1,17 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { AlbumDetails } from '../bandcamp/types.ts';
+import type { Neighbor } from './neighbors.ts';
 import { archiveCandidates } from './archive.ts';
 
-const neighbor = (fanId: number, weight: number, ids: number[]) => ({
+const url = (id: number): string => `https://x.test/album/${id}`;
+
+const neighbor = (fanId: number, weight: number, ids: number[]): Neighbor => ({
   fanId,
   weight,
-  items: ids.map((id) => ({
-    itemId: id,
-    url: `https://x.test/album/${id}`,
-    title: `T${id}`,
-    artist: `A${id}`,
-  })),
+  itemUrls: ids.map(url),
 });
 
 const album: AlbumDetails = {
@@ -31,12 +29,44 @@ test('релизы соседей, которых нет у владельца, 
     { album: async () => album },
     {
       neighbors: [neighbor(10, 1, [1, 2])],
-      exclude: new Set(['https://x.test/album/1']),
+      exclude: new Set([url(1)]),
       limit: 10,
     },
   );
-  assert.deepEqual(found.map((c) => c.itemId), [2]);
+  assert.deepEqual(found.map((c) => c.url), [url(2)]);
   assert.equal(found[0]?.origin, 'archive');
+});
+
+test('itemId кандидата — детерминированный хеш URL, а не соседский item_id', async () => {
+  // Neighbor.itemUrls хранит только URL (см. комментарий в neighbors.ts —
+  // itemId соседского релиза больше не сохраняется в data/neighbors.json).
+  // archiveCandidates обязана сама вывести стабильный itemId для
+  // callback_data — тем же способом, каким это уже делается для релизов
+  // без настоящего item_id в fresh.ts (см. `hashUrl` в `src/lib/hash.ts`):
+  // ненулевой, детерминированный между вызовами, разный для разных URL.
+  const found = await archiveCandidates(
+    { album: async () => album },
+    { neighbors: [neighbor(10, 1, [1, 2])], exclude: new Set(), limit: 10 },
+  );
+  const again = await archiveCandidates(
+    { album: async () => album },
+    { neighbors: [neighbor(10, 1, [1, 2])], exclude: new Set(), limit: 10 },
+  );
+  assert.notEqual(found[0]?.itemId, 0);
+  assert.notEqual(found[0]?.itemId, found[1]?.itemId);
+  assert.equal(found[0]?.itemId, again[0]?.itemId);
+});
+
+test('title/artist кандидата берутся со страницы релиза, а не из соседской коллекции', async () => {
+  // Соседская коллекция в data/neighbors.json больше не хранит title/artist
+  // (см. Neighbor.itemUrls) — единственный источник этих полей теперь
+  // deps.album(url), вызываемый здесь же для каждого кандидата.
+  const found = await archiveCandidates(
+    { album: async () => ({ ...album, title: 'Со страницы релиза', artist: 'Реальный артист' }) },
+    { neighbors: [neighbor(10, 1, [1])], exclude: new Set(), limit: 10 },
+  );
+  assert.equal(found[0]?.title, 'Со страницы релиза');
+  assert.equal(found[0]?.artist, 'Реальный артист');
 });
 
 test('голос второго соседа за тот же релиз учитывается частично (демпфированный хвост) и задаёт порядок', async () => {
@@ -51,7 +81,7 @@ test('голос второго соседа за тот же релиз учи�
       limit: 10,
     },
   );
-  assert.equal(found[0]?.itemId, 2);
+  assert.equal(found[0]?.url, url(2));
   assert.equal(found[0]?.neighborWeight, 1.125);
 });
 
@@ -71,7 +101,7 @@ test('один сильный сосед обгоняет толпу слабы�
       limit: 10,
     },
   );
-  assert.deepEqual(found.map((c) => c.itemId), [100, 200]);
+  assert.deepEqual(found.map((c) => c.url), [url(100), url(200)]);
 });
 
 test('два сильных соседа всё равно обгоняют одного такого же сильного', async () => {
@@ -87,7 +117,7 @@ test('два сильных соседа всё равно обгоняют од
       limit: 10,
     },
   );
-  assert.deepEqual(found.map((c) => c.itemId), [200, 100]);
+  assert.deepEqual(found.map((c) => c.url), [url(200), url(100)]);
 });
 
 test('лимит ограничивает число походов за страницами релизов', async () => {
@@ -105,17 +135,16 @@ test('лимит ограничивает число походов за стр�
   assert.equal(found.length, 2);
 });
 
-test('один и тот же релиз у двух соседей с разным itemId дедуплицируется по URL', async () => {
-  // Оба источника указывают на один и тот же релиз (тот же URL), но с
-  // разными itemId — ситуация, которую decisions.md описывает как обычную
-  // между источниками. Дедуп обязан идти по URL, а голоса — сходиться в
-  // voteScore: 1 + 0.25 * 0.5 = 1.125.
+test('один и тот же релиз у двух соседей дедуплицируется по URL, а голоса сходятся в voteScore', async () => {
+  // Оба соседа указывают на один и тот же URL — единственное, что теперь
+  // хранится в Neighbor.itemUrls (см. комментарий там же). Дедуп обязан
+  // идти по URL, а голоса — сходиться в voteScore: 1 + 0.25 * 0.5 = 1.125.
   const found = await archiveCandidates(
     { album: async () => album },
     {
       neighbors: [
-        { fanId: 10, weight: 1, items: [{ itemId: 111, url: 'https://x.test/album/1', title: 'T1', artist: 'A1' }] },
-        { fanId: 11, weight: 0.5, items: [{ itemId: 222, url: 'https://x.test/album/1', title: 'T1', artist: 'A1' }] },
+        { fanId: 10, weight: 1, itemUrls: [url(1)] },
+        { fanId: 11, weight: 0.5, itemUrls: [url(1)] },
       ],
       exclude: new Set(),
       limit: 10,
@@ -131,8 +160,8 @@ test('провал страницы альбома не восполняется
   // короче на одну позицию, а не подтягивает релиз 3, который в срез по
   // options.limit вообще не попадал.
   const found = await archiveCandidates(
-    { album: async (url) => (url === 'https://x.test/album/1' ? null : album) },
+    { album: async (albumUrl) => (albumUrl === url(1) ? null : album) },
     { neighbors: [neighbor(10, 1, [1, 2, 3])], exclude: new Set(), limit: 2 },
   );
-  assert.deepEqual(found.map((c) => c.itemId), [2]);
+  assert.deepEqual(found.map((c) => c.url), [url(2)]);
 });

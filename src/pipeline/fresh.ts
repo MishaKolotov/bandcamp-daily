@@ -1,6 +1,7 @@
 import type { AlbumDetails, Candidate } from '../bandcamp/types.ts';
 import type { DiscoverItem, DiscoverOptions } from '../bandcamp/discover.ts';
 import type { BandRelease } from '../bandcamp/band.ts';
+import { hashUrl } from '../lib/hash.ts';
 
 export interface FreshDeps {
   discover: (options: DiscoverOptions) => Promise<DiscoverItem[]>;
@@ -44,34 +45,6 @@ export interface FreshOptions {
 
 function ageInDays(releasedAt: string, now: Date): number {
   return (now.getTime() - new Date(releasedAt).getTime()) / 86_400_000;
-}
-
-/**
- * cyrb53 — компактный детерминированный строковый хеш без зависимостей,
- * даёт 53-битное число (весь безопасный диапазон `Number` в JS).
- *
- * Нужен для релизов, найденных через дискографию группы/лейбла: у таких
- * нет числового `item_id` от Bandcamp (страница /music его не отдаёт), а
- * itemId в `Candidate` используется потом и как ключ дедупликации «уже
- * показано», и как содержимое callback_data телеграм-кнопок, по которому
- * нажатие сопоставляется с конкретной карточкой. Присвоить всем такой
- * itemId: 0 — значит слить их все в одну запись при дедупе и сделать
- * нажатие кнопки на любой из них неотличимым от нажатия на любую другую.
- * Хеш URL детерминирован (один и тот же релиз в разных прогонах получает
- * один и тот же id) и с исчезающе малой вероятностью коллизий на объёмах,
- * которые видит один канал.
- */
-function hashUrl(url: string): number {
-  let h1 = 0xdeadbeef;
-  let h2 = 0x41c6ce57;
-  for (let i = 0; i < url.length; i++) {
-    const ch = url.charCodeAt(i);
-    h1 = Math.imul(h1 ^ ch, 2654435761);
-    h2 = Math.imul(h2 ^ ch, 1597334677);
-  }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
 }
 
 /**

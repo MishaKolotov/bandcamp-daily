@@ -1,17 +1,25 @@
 import type { FanItem } from '../bandcamp/types.ts';
 
-export interface NeighborItem {
-  itemId: number;
-  url: string;
-  title: string;
-  artist: string;
-}
-
 export interface Neighbor {
   fanId: number;
   /** Доля пересечения с коллекцией владельца, 0..1. */
   weight: number;
-  items: NeighborItem[];
+  /**
+   * URL релизов из коллекции соседа. Только URL, а не вся `FanItem` (title,
+   * artist, itemId) — см. `archiveCandidates` в `src/pipeline/archive.ts`:
+   * это единственное, что ежедневный прогон читает из каждого сохранённого
+   * релиза для отбора кандидатов и дедупликации. Заголовок/артист берутся
+   * заново со страницы релиза (`deps.album(url)`) в день показа — они и так
+   * были лишь фолбэком на случай, если разбор страницы не даст title/artist,
+   * а itemId и вовсе не ключ дедупликации, а удобная ручка для
+   * callback_data, для которой годится детерминированный хеш URL
+   * (`hashUrl` в `src/lib/hash.ts`) — как уже делается для релизов без
+   * настоящего item_id в `src/pipeline/fresh.ts`. Хранить все четыре поля
+   * на релиз означало бы пятикратно раздувать `data/neighbors.json` (у
+   * некоторых соседей коллекция — 1500+ релизов) ради данных, которые
+   * прогон либо не читает вовсе, либо всё равно перезапрашивает.
+   */
+  itemUrls: string[];
 }
 
 export interface NeighborDeps {
@@ -166,12 +174,7 @@ export async function computeNeighbors(
       // оборвали. Инфляция веса потребовала бы усечённой коллекции МЕНЬШЕ
       // 223 позиций, а лимит страниц такого дать не может.
       weight: Number((overlap / Math.min(theirs.length, mineIds.size)).toFixed(4)),
-      items: theirs.map((item) => ({
-        itemId: item.itemId,
-        url: item.url,
-        title: item.title,
-        artist: item.artist,
-      })),
+      itemUrls: theirs.map((item) => item.url),
     });
   }
 

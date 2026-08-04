@@ -154,7 +154,7 @@ if (neighbors.length > 0) {
   console.log(`Близость: минимум ${min}, медиана ${median}, максимум ${max}.`);
   console.log('Топ-10 по близости:');
   for (const neighbor of neighbors.slice(0, 10)) {
-    console.log(`  fan ${neighbor.fanId}: близость ${neighbor.weight}, релизов ${neighbor.items.length}`);
+    console.log(`  fan ${neighbor.fanId}: близость ${neighbor.weight}, релизов ${neighbor.itemUrls.length}`);
   }
 } else {
   console.warn(

@@ -66,7 +66,7 @@ test('сам владелец в соседи не попадает', async () =
   assert.deepEqual(neighbors, []);
 });
 
-test('в соседе сохраняются его релизы, чтобы ежедневный запуск не ходил в сеть', async () => {
+test('в соседе сохраняются URL его релизов, чтобы ежедневный запуск не ходил в сеть за коллекцией соседа', async () => {
   const deps: NeighborDeps = {
     collectors: async () => [10],
     collectionOf: async () => [item(1), item(5)],
@@ -79,7 +79,7 @@ test('в соседе сохраняются его релизы, чтобы е�
     neighborLimit: 5,
     minCollectionSize: 0,
   });
-  assert.deepEqual(neighbor?.items.map((i) => i.itemId), [1, 5]);
+  assert.deepEqual(neighbor?.itemUrls, [item(1).url, item(5).url]);
 });
 
 test('соседи с нулевым пересечением отбрасываются', async () => {

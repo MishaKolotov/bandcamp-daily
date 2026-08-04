@@ -1,5 +1,6 @@
 import type { AlbumDetails, Candidate } from '../bandcamp/types.ts';
 import type { Neighbor } from './neighbors.ts';
+import { hashUrl } from '../lib/hash.ts';
 
 export interface ArchiveDeps {
   album: (url: string) => Promise<AlbumDetails | null>;
@@ -62,21 +63,25 @@ export async function archiveCandidates(
   options: ArchiveOptions,
 ): Promise<Candidate[]> {
   // Ключ — URL (см. комментарий у ArchiveOptions.exclude): один и тот же
-  // релиз у двух соседей должен схлопнуться в одну запись, даже если по
-  // какой-то случайности их itemId разошлись. Веса пока не сворачиваем —
-  // копим списком, voteScore разбирается с ним ниже.
-  const votes = new Map<string, { weights: number[]; itemId: number; title: string; artist: string }>();
+  // релиз у двух соседей должен схлопнуться в одну запись. Раньше здесь же
+  // копился первый попавшийся itemId/title/artist соседа как фолбэк на
+  // случай, если deps.album(url) не отдаст title/artist — но с тех пор, как
+  // Neighbor.items стал Neighbor.itemUrls (см. комментарий там же:
+  // data/neighbors.json не хранит ничего, кроме URL, ради размера файла),
+  // такого фолбэка больше нет. Веса пока не сворачиваем — копим списком,
+  // voteScore разбирается с ним ниже.
+  const votes = new Map<string, number[]>();
   for (const neighbor of options.neighbors) {
-    for (const item of neighbor.items) {
-      if (options.exclude.has(item.url)) continue;
-      const current = votes.get(item.url);
-      if (current) current.weights.push(neighbor.weight);
-      else votes.set(item.url, { weights: [neighbor.weight], itemId: item.itemId, title: item.title, artist: item.artist });
+    for (const url of neighbor.itemUrls) {
+      if (options.exclude.has(url)) continue;
+      const weights = votes.get(url);
+      if (weights) weights.push(neighbor.weight);
+      else votes.set(url, [neighbor.weight]);
     }
   }
 
   const ranked = [...votes.entries()]
-    .sort((a, b) => voteScore(b[1].weights) - voteScore(a[1].weights))
+    .sort((a, b) => voteScore(b[1]) - voteScore(a[1]))
     .slice(0, options.limit);
 
   // Контракт: без бэкафилла. Если у релиза из среза не открылась страница,
@@ -86,21 +91,27 @@ export async function archiveCandidates(
   // сверх заявленного лимита; проще и предсказуемее просто отдать на одну
   // карточку меньше.
   const candidates: Candidate[] = [];
-  for (const [url, vote] of ranked) {
+  for (const [url, weights] of ranked) {
     const details = await deps.album(url);
     if (!details) continue;
     candidates.push({
-      itemId: vote.itemId,
+      // itemId соседского релиза не хранится (см. Neighbor.itemUrls) — он и
+      // раньше был лишь удобной ручкой для callback_data, а не ключом
+      // дедупликации (тот идёт по url). Детерминированный хеш url даёт ту
+      // же стабильность между прогонами, что и настоящий item_id, тем же
+      // способом, каким уже помечены релизы без item_id в fresh.ts (см.
+      // `hashUrl` в `src/lib/hash.ts`).
+      itemId: hashUrl(url),
       url,
-      title: details.title || vote.title,
-      artist: details.artist || vote.artist,
+      title: details.title,
+      artist: details.artist,
       label: details.label,
       tags: details.tags,
       releasedAt: details.releasedAt,
       artUrl: details.artUrl,
       alsoCollected: 0,
       origin: 'archive',
-      neighborWeight: Number(voteScore(vote.weights).toFixed(4)),
+      neighborWeight: Number(voteScore(weights).toFixed(4)),
     });
   }
   return candidates;
