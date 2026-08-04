@@ -348,6 +348,7 @@ export async function runDaily(
       });
       selection = selectForBucket({
         bucket: bucketProfile,
+        seedTags: bucket.seedTags,
         fresh: [...hubFresh, ...followsFresh],
         archive: archivePool,
         seen: shown,

@@ -34,6 +34,17 @@ export interface ScoreResult {
  * `build.ts`: «релиз с одним лишь общим тегом всё ещё проходит порог
  * совпадения у скорера». Если бы порог оказался выше 0.5, скорер
  * отбраковывал бы вообще все релизы бакета до единого.
+ *
+ * Сам по себе этот порог не защищает от противоположной ошибки: не-опорные
+ * теги нормализуются к максимуму 1, а не 0.5, так что релиз БЕЗ единого
+ * жанрового тега бакета может набрать `tagScore >= 0.5` на одних случайных
+ * совпадениях (живой прогон, 2026-08: hardcore-punk на `['cleveland',
+ * 'diy']` — голая география и общее слово — даёт 0.68 и проходит порог).
+ * Поднимать сам MATCH_FLOOR тут не решение — он и так впритык под seed-тег
+ * (см. выше), поднять его значило бы сломать этот же инвариант. Решает эту
+ * половину не порог суммы, а отдельная проверка `hasSeedTag` ниже —
+ * кандидат обязан нести хотя бы один опорный тег бакета, а не просто
+ * набрать сумму весов откуда угодно.
  */
 const MATCH_FLOOR = 0.5;
 /**
@@ -63,9 +74,31 @@ const STRONG_MATCH = 1.5;
  */
 const FEEDBACK_PENALTY_CAP = 1;
 
+/**
+ * `seedTags` — отдельный обязательный аргумент, а не поле `BucketProfile`
+ * (которое приходит частично из data/profile.json, а его скорер уже
+ * получает как `bucket`). Два кандидата на источник рассматривались:
+ *
+ * 1. Дописать `seedTags` в `BucketProfile`/data/profile.json. Отклонено:
+ *    profile.json хозяин правит руками (см. README), а seedTags — это
+ *    код-уровневый источник истины из `./buckets.ts`, не вкусовая настройка.
+ *    Раз в файле дублировался бы код, он рано или поздно разойдётся с
+ *    `BUCKETS` — а `readJson` в `../lib/state.ts` не валидирует форму
+ *    файла против интерфейса: отсутствующее поле молча стало бы
+ *    `undefined` в рантайме, и проверка `hasSeedTag` ниже либо упала бы,
+ *    либо (что хуже) молча отбраковывала вообще все релизы бакета.
+ * 2. Обязательный аргумент `score()` — выбрано. TypeScript требует его на
+ *    КАЖДОМ вызове (в отличие от опционального поля `ScoreContext`, которое
+ *    можно молча не передать и получить старое поведение без единого
+ *    предупреждения) — вызывающий код, забывший его передать, получает
+ *    ошибку компиляции, а не тихо изменившееся поведение. `score` при этом
+ *    остаётся чистой функцией: результат зависит только от аргументов, без
+ *    скрытого чтения `BUCKETS` или чего-либо ещё изнутри модуля.
+ */
 export function score(
   candidate: Candidate,
   bucket: BucketProfile,
+  seedTags: readonly string[],
   context: ScoreContext,
 ): ScoreResult {
   const tags = candidate.tags.map((tag) => tag.toLowerCase());
@@ -87,6 +120,7 @@ export function score(
     if (existing === undefined || weight > existing) weightByCanonicalTag.set(key, weight);
   }
   const stopTagsCanonical = new Set(bucket.stopTags.map(canonicalizeTag));
+  const seedTagsCanonical = new Set(seedTags.map(canonicalizeTag));
 
   const matched = tags
     .map((tag) => ({ tag, weight: weightByCanonicalTag.get(canonicalizeTag(tag)) ?? 0 }))
@@ -94,8 +128,21 @@ export function score(
     .sort((a, b) => b.weight - a.weight);
   const tagScore = matched.reduce((sum, entry) => sum + entry.weight, 0);
 
+  // Симметрия с профилем: buildProfile засчитывает релиз владельца в
+  // бакет, только если тот несёт опорный тег (см. `bucketsOf`) — ни один
+  // релиз бакета не может существовать без него. Кандидат обязан
+  // соответствовать тому же стандарту, а не только сумме весов: без этой
+  // проверки не-опорные теги, нормализованные к максимуму 1, дают релизу
+  // без единого жанрового маркера бакета набрать `tagScore >= MATCH_FLOOR`
+  // на чистой случайности (живой прогон, 2026-08: hardcore-punk на
+  // `['cleveland', 'diy']` — география плюс общее слово — 0.68, проходило
+  // порог). MATCH_FLOOR при этом остаётся прежним (0.5) — поднимать его
+  // сломало бы задокументированный инвариант «релиз с одним лишь опорным
+  // тегом всё ещё проходит порог», см. комментарий на MATCH_FLOOR.
+  const hasSeedTag = tags.some((tag) => seedTagsCanonical.has(canonicalizeTag(tag)));
+
   const stopHits = tags.filter((tag) => stopTagsCanonical.has(canonicalizeTag(tag))).length;
-  if (tagScore < MATCH_FLOOR || (stopHits > 0 && tagScore < STRONG_MATCH)) {
+  if (!hasSeedTag || tagScore < MATCH_FLOOR || (stopHits > 0 && tagScore < STRONG_MATCH)) {
     // reasons: [] — см. комментарий на поле в ScoreResult: при отбраковке
     // совпавшие теги не годятся в «почему это тебе».
     return { total: 0, rejected: true, reasons: [] };

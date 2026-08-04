@@ -14,6 +14,13 @@ const bucket: BucketProfile = {
   releaseCount: 50,
   weightSum: 60,
 };
+// В этом фикстурном профиле опорный тег бакета ровно один — 'crust' (см.
+// комментарий выше про вес 0.5 в build.ts). 'discharge worship' и
+// 'raw punk' — производные теги, а не опорные, несмотря на то что 'raw
+// punk' в реальном buckets.ts тоже seed-тег crust — эта фикстура его
+// намеренно моделирует как производный, чтобы отличать поведение по весу
+// от поведения по опорности.
+const seedTags = ['crust'];
 
 const candidate = (over: Partial<Candidate>): Candidate => ({
   itemId: 1,
@@ -30,27 +37,28 @@ const candidate = (over: Partial<Candidate>): Candidate => ({
 });
 
 test('совпадение тегов даёт положительный скор', () => {
-  const result = score(candidate({ tags: ['crust', 'discharge worship'] }), bucket, {});
+  const result = score(candidate({ tags: ['crust', 'discharge worship'] }), bucket, seedTags, {});
   // Опорный тег (0.5) + топовый не-опорный тег (1) — потолок парного совпадения.
   assert.equal(result.total, 1.5);
   assert.equal(result.rejected, false);
 });
 
 test('релиз без единого знакомого тега отбраковывается', () => {
-  const result = score(candidate({ tags: ['ambient'] }), bucket, {});
+  const result = score(candidate({ tags: ['ambient'] }), bucket, seedTags, {});
   assert.equal(result.rejected, true);
 });
 
 test('стоп-тег при слабом совпадении отбраковывает релиз', () => {
-  const result = score(candidate({ tags: ['raw punk', 'deathcore'] }), bucket, {});
+  const result = score(candidate({ tags: ['crust', 'raw punk', 'deathcore'] }), bucket, seedTags, {});
   assert.equal(result.rejected, true);
 });
 
 test('стоп-тег при сильном совпадении только штрафует', () => {
-  const strong = score(candidate({ tags: ['crust', 'discharge worship', 'raw punk'] }), bucket, {});
+  const strong = score(candidate({ tags: ['crust', 'discharge worship', 'raw punk'] }), bucket, seedTags, {});
   const withStop = score(
     candidate({ tags: ['crust', 'discharge worship', 'raw punk', 'metalcore'] }),
     bucket,
+    seedTags,
     {},
   );
   assert.equal(withStop.rejected, false);
@@ -61,15 +69,15 @@ test('одинокий опорный тег не отбраковывается
   // Это и есть суть пересчёта порогов под новую форму профиля: опорный тег
   // (0.5) один погоды не делает и не убивает релиз, а сумма с топовым
   // не-опорным тегом (1) — ощутимо сильнее.
-  const seedOnly = score(candidate({ tags: ['crust'] }), bucket, {});
-  const seedPlusSpecific = score(candidate({ tags: ['crust', 'discharge worship'] }), bucket, {});
+  const seedOnly = score(candidate({ tags: ['crust'] }), bucket, seedTags, {});
+  const seedPlusSpecific = score(candidate({ tags: ['crust', 'discharge worship'] }), bucket, seedTags, {});
   assert.equal(seedOnly.rejected, false);
   assert.ok(seedPlusSpecific.total > seedOnly.total);
 });
 
 test('знакомый лейбл поднимает скор', () => {
-  const plain = score(candidate({ tags: ['crust'] }), bucket, {});
-  const known = score(candidate({ tags: ['crust'], label: 'La Vida Es Un Mus' }), bucket, {
+  const plain = score(candidate({ tags: ['crust'] }), bucket, seedTags, {});
+  const known = score(candidate({ tags: ['crust'], label: 'La Vida Es Un Mus' }), bucket, seedTags, {
     labels: { 'la vida es un mus': 1 },
   });
   assert.ok(known.total > plain.total);
@@ -80,8 +88,8 @@ test('популярность добавляет мало и не переби�
   // проверяет отбраковку по полу, а не популярность: hype несёт только
   // опорный тег (0.5 — впритык проходит порог) плюс запредельный хайп,
   // match несёт опорный и топовый не-опорный тег без единого "коллекта".
-  const hype = score(candidate({ tags: ['crust'], alsoCollected: 1_000_000_000 }), bucket, {});
-  const match = score(candidate({ tags: ['crust', 'discharge worship'] }), bucket, {});
+  const hype = score(candidate({ tags: ['crust'], alsoCollected: 1_000_000_000 }), bucket, seedTags, {});
+  const match = score(candidate({ tags: ['crust', 'discharge worship'] }), bucket, seedTags, {});
   assert.equal(hype.rejected, false);
   // Популярность капается на 0.5 (см. Math.min в score.ts): даже миллиард
   // "also collected" не даёт больше tagScore(0.5) + 0.5 = 1 — если бы
@@ -91,8 +99,8 @@ test('популярность добавляет мало и не переби�
 });
 
 test('отскипанные ранее теги штрафуются', () => {
-  const plain = score(candidate({ tags: ['crust'] }), bucket, {});
-  const penalized = score(candidate({ tags: ['crust'] }), bucket, {
+  const plain = score(candidate({ tags: ['crust'] }), bucket, seedTags, {});
+  const penalized = score(candidate({ tags: ['crust'] }), bucket, seedTags, {
     tagPenalties: { crust: 2 },
   });
   assert.ok(penalized.total < plain.total);
@@ -102,7 +110,7 @@ test('отбраковка по штрафам всегда репортит tot
   // crust даёт tagScore 0.5, штраф за отскип с весом 10 срезает
   // 0.25 * 10 = 2.5 очка — итог уходит в минус (-2), но total должен
   // репортиться ровно как 0, той же формой, что и отбраковка по полу.
-  const result = score(candidate({ tags: ['crust'] }), bucket, {
+  const result = score(candidate({ tags: ['crust'] }), bucket, seedTags, {
     tagPenalties: { crust: 10 },
   });
   assert.equal(result.rejected, true);
@@ -115,7 +123,7 @@ test('сильное совпадение переживает большой ш
   // именно на нём быстрее всего — 20 скипов без потолка дают 0.25*20=5,
   // что зарежет даже идеальное совпадение в ноль. С потолком в 1 сильное
   // совпадение должно пережить это (1.5 - 1 = 0.5 > 0).
-  const result = score(candidate({ tags: ['crust', 'discharge worship'] }), bucket, {
+  const result = score(candidate({ tags: ['crust', 'discharge worship'] }), bucket, seedTags, {
     tagPenalties: { crust: 20 },
   });
   assert.equal(result.rejected, false);
@@ -131,7 +139,7 @@ test('совпадение по каноническому тегу: профи�
     releaseCount: 10,
     weightSum: 10,
   };
-  const matched = score(candidate({ tags: ['crust', 'crustpunk'] }), bucketAlt, {});
+  const matched = score(candidate({ tags: ['crust', 'crustpunk'] }), bucketAlt, seedTags, {});
   assert.equal(matched.rejected, false);
   assert.equal(matched.total, 1.3);
   assert.deepEqual(matched.reasons, ['crustpunk', 'crust']);
@@ -147,13 +155,54 @@ test('стоп-тег ловит кандидата, даже если тот н
   // 'crust' (0.5) ниже STRONG_MATCH (1.5) — слабое совпадение, стоп-тег
   // должен отбраковать релиз целиком, даже несмотря на разницу в написании
   // ('deathcore' у кандидата против 'death-core' в profile.json).
-  const weak = score(candidate({ tags: ['crust', 'deathcore'] }), bucketAlt, {});
+  const weak = score(candidate({ tags: ['crust', 'deathcore'] }), bucketAlt, seedTags, {});
   assert.equal(weak.rejected, true);
 });
 
 test('в reasons попадают совпавшие теги, сильнейшие первыми', () => {
-  const result = score(candidate({ tags: ['raw punk', 'crust', 'discharge worship'] }), bucket, {});
+  const result = score(candidate({ tags: ['raw punk', 'crust', 'discharge worship'] }), bucket, seedTags, {});
   // discharge worship (1) тяжелее опорного crust (0.5), который в новой форме профиля
   // больше не гарантированно самый тяжёлый совпавший тег.
   assert.deepEqual(result.reasons.slice(0, 2), ['discharge worship', 'crust']);
+});
+
+// ---------------------------------------------------------------------------
+// Defect 2: кандидат обязан нести хотя бы один опорный тег бакета
+// ---------------------------------------------------------------------------
+
+test('релиз без единого опорного тега бакета отбраковывается, даже набрав сумму весов выше порога', () => {
+  // 'discharge worship' (1) + 'raw punk' (0.4) — сумма 1.4, выше MATCH_FLOOR
+  // (0.5) и даже выше старого "потолка парного совпадения" (было бы 1.5,
+  // здесь 1.4), но ни один из двух тегов не опорный тег бакета ('crust') —
+  // до фикса такой релиз проходил бы чисто по сумме.
+  const result = score(candidate({ tags: ['discharge worship', 'raw punk'] }), bucket, seedTags, {});
+  assert.equal(result.rejected, true);
+  assert.equal(result.total, 0);
+});
+
+test('живой сценарий бага: geo-тег + общее слово набирают сумму выше пола без единого жанрового тега', () => {
+  // Тот же класс кандидата, который живой прогон (2026-08) реально пропускал
+  // у hardcore-punk: 'cleveland' (город) + 'diy' (общее слово) — оба
+  // не-опорные, оба несут вес в этой фикстуре (моделируем через bucketAlt).
+  const bucketAlt: BucketProfile = {
+    tags: { crust: 0.5, cleveland: 0.4, diy: 0.35 },
+    stopTags: [],
+    releaseCount: 10,
+    weightSum: 10,
+  };
+  const result = score(candidate({ tags: ['cleveland', 'diy'] }), bucketAlt, seedTags, {});
+  assert.equal(result.rejected, true);
+});
+
+test('опорный тег плюс сколько угодно производных — по-прежнему проходит (не регрессия)', () => {
+  const result = score(candidate({ tags: ['crust', 'discharge worship', 'raw punk'] }), bucket, seedTags, {});
+  assert.equal(result.rejected, false);
+});
+
+test('несколько опорных тегов бакета матчатся независимо (несколько seed-тегов в seedTags)', () => {
+  const multiSeed = ['crust', 'crust punk', 'd-beat'];
+  const withOneSeed = score(candidate({ tags: ['crust'] }), bucket, multiSeed, {});
+  const withoutSeed = score(candidate({ tags: ['discharge worship'] }), bucket, multiSeed, {});
+  assert.equal(withOneSeed.rejected, false);
+  assert.equal(withoutSeed.rejected, true);
 });

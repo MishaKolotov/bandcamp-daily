@@ -34,6 +34,7 @@ function picked(outcome: PoolOutcome) {
 test('на бакет выбирается по одному свежему и одному архивному', () => {
   const result = selectForBucket({
     bucket,
+    seedTags: ['crust'],
     fresh: [candidate(1), candidate(2)],
     archive: [candidate(3, { origin: 'archive' })],
     seen: new Set(),
@@ -47,6 +48,7 @@ test('на бакет выбирается по одному свежему и �
 test('показанное ранее (по URL) не предлагается снова', () => {
   const result = selectForBucket({
     bucket,
+    seedTags: ['crust'],
     fresh: [candidate(1)],
     archive: [],
     seen: new Set(['https://x.test/album/1']),
@@ -65,6 +67,7 @@ test('itemId кандидата, показанного через другой 
   // всплыл с настоящим item_id Bandcamp через Discover).
   const result = selectForBucket({
     bucket,
+    seedTags: ['crust'],
     fresh: [candidate(999, { url: 'https://x.test/album/1' })],
     archive: [],
     seen: new Set(['https://x.test/album/1']),
@@ -77,6 +80,7 @@ test('itemId кандидата, показанного через другой 
 test('отбракованные скорингом не попадают в выбор', () => {
   const result = selectForBucket({
     bucket,
+    seedTags: ['crust'],
     fresh: [candidate(1, { tags: ['ambient'] })],
     archive: [],
     seen: new Set(),
@@ -90,6 +94,7 @@ test('отбракованные скорингом не попадают в в�
 test('оба пула пусты на входе — оба «не предлагали», а не «не подошло»', () => {
   const result = selectForBucket({
     bucket,
+    seedTags: ['crust'],
     fresh: [],
     archive: [],
     seen: new Set(),
@@ -103,6 +108,7 @@ test('оба пула пусты на входе — оба «не предла�
 test('побеждает кандидат с большим скором, остальные идут в запас', () => {
   const result = selectForBucket({
     bucket,
+    seedTags: ['crust'],
     fresh: [candidate(1, { tags: ['crust'] }), candidate(2, { tags: ['crust', 'd-beat'] })],
     archive: [],
     seen: new Set(),
@@ -117,6 +123,7 @@ test('побеждает кандидат с большим скором, ост
 test('в выбор кладутся совпавшие теги для строки «почему»', () => {
   const result = selectForBucket({
     bucket,
+    seedTags: ['crust'],
     fresh: [candidate(1, { tags: ['crust', 'd-beat'] })],
     archive: [],
     seen: new Set(),
@@ -129,6 +136,7 @@ test('в выбор кладутся совпавшие теги для стро
 test('запас ограничен alternativesCount', () => {
   const result = selectForBucket({
     bucket,
+    seedTags: ['crust'],
     fresh: [candidate(1), candidate(2), candidate(3), candidate(4), candidate(5)],
     archive: [],
     seen: new Set(),
@@ -143,6 +151,7 @@ test('ничья по скору решается детерминированн
   const b = candidate(20);
   const forward = selectForBucket({
     bucket,
+    seedTags: ['crust'],
     fresh: [a, b],
     archive: [],
     seen: new Set(),
@@ -151,6 +160,7 @@ test('ничья по скору решается детерминированн
   });
   const backward = selectForBucket({
     bucket,
+    seedTags: ['crust'],
     fresh: [b, a],
     archive: [],
     seen: new Set(),
@@ -165,6 +175,7 @@ test('дубликат по URL внутри одного пула схлопы�
   const higher = candidate(500, { url: 'https://x.test/album/dup' });
   const forward = selectForBucket({
     bucket,
+    seedTags: ['crust'],
     fresh: [lower, higher],
     archive: [],
     seen: new Set(),
@@ -173,6 +184,7 @@ test('дубликат по URL внутри одного пула схлопы�
   });
   const backward = selectForBucket({
     bucket,
+    seedTags: ['crust'],
     fresh: [higher, lower],
     archive: [],
     seen: new Set(),
@@ -188,6 +200,7 @@ test('один и тот же релиз, пришедший и в свежак,
   const sharedUrl = 'https://x.test/album/shared';
   const result = selectForBucket({
     bucket,
+    seedTags: ['crust'],
     fresh: [candidate(1, { url: sharedUrl, origin: 'fresh' })],
     archive: [candidate(2, { url: sharedUrl, origin: 'archive' })],
     seen: new Set(),
@@ -210,6 +223,7 @@ test('запасной кандидат одного пула не повтор�
 
   const result = selectForBucket({
     bucket,
+    seedTags: ['crust'],
     fresh: [freshA, freshB],
     archive: [archiveB],
     seen: new Set(),
