@@ -21,24 +21,67 @@ import type { PoolOutcome } from './select.ts';
 // hubTagsForBucket
 // ---------------------------------------------------------------------------
 
-test('hubTagsForBucket: берёт теги бакета по убыванию веса, нулевые не считаются сигналом', () => {
+test('hubTagsForBucket: половина слотов резервируется под seed-теги, даже когда производные весят больше', () => {
   const bucket: BucketProfile = {
-    tags: { a: 1, b: 0.5, c: 0, d: 0.8 },
+    tags: { a: 1, b: 0.5, c: 0, d: 0.8, seed: 0.5 },
     stopTags: [],
     releaseCount: 10,
     weightSum: 10,
   };
-  assert.deepEqual(hubTagsForBucket(bucket, ['seed'], 2), ['a', 'd']);
+  // Чисто по весу 'seed' (0.5) проиграл бы и 'a' (1), и 'd' (0.8) — старое
+  // поведение вернуло бы ['a', 'd'], без единого собственного тега бакета
+  // (ровно баг из отчёта: hardcore-punk давал 0 seed-тегов в хабе дня).
+  // limit=2 -> seedSlots=1: один слот жёстко под 'seed', второй — под
+  // самый тяжёлый производный ('a').
+  assert.deepEqual(hubTagsForBucket(bucket, ['seed'], 2), ['seed', 'a']);
 });
 
-test('hubTagsForBucket: без тегов профиля откатывается на seedTags бакета', () => {
+test('hubTagsForBucket: без тегов профиля откатывается на seedTags бакета, составные — впереди голых', () => {
   const bucket: BucketProfile = { tags: {}, stopTags: [], releaseCount: 0, weightSum: 0 };
-  assert.deepEqual(hubTagsForBucket(bucket, ['crust', 'd-beat', 'stenchcore'], 2), ['crust', 'd-beat']);
+  // 'd-beat' — составной (дефис), значит идёт первым при выборе seed-части
+  // (см. `orderSeedTagsBySpecificity` в `../profile/buckets.ts`); 'crust' —
+  // голый, добирается вторым слотом при доборе остатком seed-тегов.
+  assert.deepEqual(hubTagsForBucket(bucket, ['crust', 'd-beat', 'stenchcore'], 2), ['d-beat', 'crust']);
 });
 
 test('hubTagsForBucket: профиль из одних нулевых тегов тоже откатывается на seedTags', () => {
   const bucket: BucketProfile = { tags: { a: 0, b: 0 }, stopTags: [], releaseCount: 5, weightSum: 5 };
   assert.deepEqual(hubTagsForBucket(bucket, ['crust'], 3), ['crust']);
+});
+
+test('hubTagsForBucket: производных тегов достаточно, но их не хватает на все слоты сверх резерва — остаток добирается seed-тегами', () => {
+  const bucket: BucketProfile = { tags: { a: 1, seed: 0.5, other: 0.5 }, stopTags: [], releaseCount: 5, weightSum: 5 };
+  // limit=4, seedTags только 2 штуки — seedSlots=2 резервирует оба ('seed',
+  // 'other', в порядке объявления, оба голые). Производных на оставшиеся
+  // 2 слота хватает только на один ('a') — 4-й слот некому занять, кроме
+  // как больше нечем: seed-теги уже исчерпаны, результат короче limit.
+  assert.deepEqual(hubTagsForBucket(bucket, ['seed', 'other'], 4), ['seed', 'other', 'a']);
+});
+
+test('hubTagsForBucket: регрессия по реальному отчёту — hardcore-punk больше не теряет собственные теги целиком', () => {
+  // Форма живого прогона (2026-08): производные теги 'post-punk'/'d-beat'/
+  // 'primative'/'crust' обгоняют по весу все шесть seed-тегов бакета
+  // (зафиксированных на 0.5) — топ-4 чисто по весу был бы
+  // ['post-punk', 'd-beat', 'primative', 'crust'], ни одного панк/хардкор-
+  // тега. С резервом это невозможно: минимум половина хаб-тегов дня —
+  // собственные (составные предпочтены голым, см. предыдущий тест).
+  const bucket: BucketProfile = {
+    tags: {
+      'post-punk': 1,
+      'd-beat': 0.9264,
+      primative: 0.8748,
+      crust: 0.7874,
+      'hardcore punk': 0.5,
+      'raw punk': 0.5,
+      punk: 0.5,
+      hardcore: 0.5,
+    },
+    stopTags: [],
+    releaseCount: 60,
+    weightSum: 60,
+  };
+  const seedTags = ['hardcore punk', 'powerviolence', 'raw punk', 'ukhc', 'punk', 'hardcore'];
+  assert.deepEqual(hubTagsForBucket(bucket, seedTags, 4), ['hardcore punk', 'raw punk', 'post-punk', 'd-beat']);
 });
 
 // ---------------------------------------------------------------------------

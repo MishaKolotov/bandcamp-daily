@@ -1,6 +1,7 @@
 import type { BucketId, Candidate } from '../bandcamp/types.ts';
-import { BUCKETS, type BucketDef } from '../profile/buckets.ts';
+import { BUCKETS, orderSeedTagsBySpecificity, type BucketDef } from '../profile/buckets.ts';
 import type { BucketProfile, Profile } from '../profile/build.ts';
+import { canonicalizeTag } from '../lib/tags.ts';
 import type { Neighbor } from './neighbors.ts';
 import { freshCandidates, type FreshDeps } from './fresh.ts';
 import { archiveCandidates, type ArchiveDeps } from './archive.ts';
@@ -17,28 +18,74 @@ import type { InlineKeyboard, TelegramUpdate } from '../telegram/api.ts';
 
 /**
  * Опорные теги бакета из data/profile.json (см. `buildProfile` в
- * `../profile/build.ts`) держат вес 0.5, не-опорные нормализованы к 1 —
- * оба класса тегов годятся как хаб-запрос Discover. Ноль (тег пережил порог
- * `minReleases`, но перепредставленность оказалась не выше средней по
- * коллекции — `informativeness` в `buildProfile` срезал его в 0) сигнала не
- * несёт вовсе: хаб такого тега для бакета не характернее, чем для Bandcamp
- * в среднем, и запрашивать его — трата сетевого запроса без цели.
+ * `../profile/build.ts`) держат вес 0.5, не-опорные нормализованы к
+ * максимуму 1 — сортировка чисто по весу поэтому систематически топит
+ * опорные теги под производными: живой прогон (2026-08) отдал для
+ * hardcore-punk хаб-теги `post-punk, d-beat, primative, crust` — ни одного
+ * панк/хардкор-тега, потому что все четыре его опорных тега, переживших
+ * порог, сидят ровно на 0.5, а четыре производных тега обогнали их весом
+ * от 0.79 до 1. В результате дневной поиск по каналу hardcore-punk ни разу
+ * не запрашивает хаб самого хардкора — новая группа жанра, ещё не
+ * попавшая в подписки, эффективно никогда не всплывёт.
+ *
+ * Тот же класс бага уже чинился один раз для антипрофиля — см.
+ * `hubSampleTags`/`orderSeedTagsBySpecificity` в `./buckets.ts`: голые
+ * однословные seed-теги ('punk', 'hardcore', 'metal') — Bandcamp-омонимы с
+ * хабом на сотни тысяч релизов, поэтому составные seed-теги предпочитаются
+ * голым при резервировании. Эта функция использует тот же helper для той
+ * же выборки, а не переизобретает своё правило заново.
+ *
+ * Слоты `limit` делятся пополам (округление вверх при нечётном limit) —
+ * половина ЖЁСТКО зарезервирована под seed-теги бакета (свои собственные
+ * жанровые маркеры, порядок — по специфичности, см. выше), вторая половина
+ * — top производных тегов профиля по весу. Производные теги не бесполезны:
+ * это то, как бакет находит смежные сцены, которые владельцу реально
+ * нравятся (соседние поджанры, тусовки лейблов), и вытеснять их совсем в
+ * пользу seed-тегов значило бы вернуть канал к чистому поиску по жанровому
+ * ярлыку, без открытия соседнего. Резерв — гарантия нижней границы для
+ * своего жанра, а не запрет на производные: если seed-тегов у бакета
+ * меньше, чем зарезервированные слоты, лишние слоты достаются производным
+ * без остатка (см. `seedPart.length` ниже).
+ *
+ * Если производных тегов не хватает, чтобы добрать limit (свежепостроенный
+ * бакет, или бакет, у которого buildProfile вообще не насчитал ни одного
+ * тега сверх порога minReleases), остаток добирается ОСТАЛЬНЫМИ seed-
+ * тегами бакета (тот же порядок по специфичности) — это тот же фолбэк на
+ * seedTags, что был раньше для случая полностью пустого профиля, просто
+ * применяется к остатку лимита, а не ко всему списку целиком.
  */
 export function hubTagsForBucket(
   bucketProfile: BucketProfile,
   seedTags: readonly string[],
   limit: number,
 ): string[] {
-  const top = Object.entries(bucketProfile.tags)
-    .filter(([, weight]) => weight > 0)
+  if (limit <= 0) return [];
+
+  const orderedSeed = orderSeedTagsBySpecificity(seedTags);
+  const seedSlots = Math.ceil(limit / 2);
+  const seedPart = orderedSeed.slice(0, seedSlots);
+
+  const seedCanonical = new Set(seedTags.map(canonicalizeTag));
+  const derivedPart = Object.entries(bucketProfile.tags)
+    .filter(([tag, weight]) => weight > 0 && !seedCanonical.has(canonicalizeTag(tag)))
     .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
+    .slice(0, limit - seedPart.length)
     .map(([tag]) => tag);
-  // Свежепостроенный бакет (или бакет, у которого buildProfile вообще не
-  // насчитал ни одного тега сверх порога minReleases) не должен остаться
-  // без хаб-тегов — тогда фолбэк на seedTags бакета: это те же теги, что
-  // разметили бакет в первую очередь, см. `BUCKETS` в `../profile/buckets.ts`.
-  return top.length > 0 ? top : seedTags.slice(0, limit);
+
+  const combined = [...seedPart, ...derivedPart];
+  if (combined.length >= limit) return combined;
+
+  // Добор оставшимися seed-тегами (в том же порядке специфичности), если и
+  // резерв, и производные вместе не набрали limit.
+  const used = new Set(combined.map(canonicalizeTag));
+  for (const tag of orderedSeed.slice(seedSlots)) {
+    if (combined.length >= limit) break;
+    const key = canonicalizeTag(tag);
+    if (used.has(key)) continue;
+    used.add(key);
+    combined.push(tag);
+  }
+  return combined;
 }
 
 /**
