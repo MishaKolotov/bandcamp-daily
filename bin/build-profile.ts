@@ -183,7 +183,11 @@ for (const bucket of BUCKETS) {
  */
 const harvestedLocations = buildLocationVocabulary(locationSamples);
 const existingVocabFile = await readJson<LocationVocabularyFile | null>(LOCATION_VOCAB_PATH, null);
-const forceVocabRewrite = process.argv.includes('--force');
+// Отдельный флаг, а не общий --force: профиль пересобирается часто (меняются
+// правила весов), а словарь мест — редко, и правки в нём делаются руками, для
+// городов, которых не оказалось в хабах. Одна ручка на два артефакта означала
+// бы, что любая пересборка профиля молча стирает ручные добавления в словарь.
+const forceVocabRewrite = process.argv.includes('--force-locations');
 
 let locationVocabulary: Set<string>;
 if (existingVocabFile && !forceVocabRewrite) {
@@ -285,4 +289,7 @@ console.log(`\nРелизов вне всех бакетов: ${unbucketed} из
 console.log(`Релизов пропущено из-за нечитаемой страницы: ${unreadable} из ${fanItems.length}.`);
 console.log(`\nПрофиль записан в ${PROFILE_PATH}. Правь tags и stopTags прямо в файле —`);
 console.log('повторный запуск без --force его не тронет, чтобы правки не потерялись.');
-console.log(`Словарь мест — в ${LOCATION_VOCAB_PATH}, тем же правилом --force.`);
+console.log(
+  `Словарь мест — в ${LOCATION_VOCAB_PATH}; пересобрать его заново можно только флагом --force-locations, ` +
+    'обычная пересборка профиля ручные правки в нём не трогает.',
+);
