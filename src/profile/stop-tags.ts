@@ -134,3 +134,111 @@ export function deriveStopTags(input: StopTagInput): string[] {
     .slice(0, limit)
     .map(([, group]) => pickDisplaySpelling(group.spellings));
 }
+
+export interface HubStopTagSample {
+  /** Тег → сколько раз встретился среди релизов ОДНОГО тег-хаба (не пула по бакету). */
+  hubTagCounts: Record<string, number>;
+  /** Сколько релизов реально сэмплировано из ЭТОГО ОДНОГО хаба. */
+  releasesSampled: number;
+}
+
+export interface BucketStopTagInput {
+  /**
+   * По одному сэмплу на каждый хаб-тег бакета (см. `hubSampleTags` в
+   * `./buckets.ts`). Хабы оцениваются НЕЗАВИСИМО друг от друга — каждый
+   * против СВОЕГО порога (своей `releasesSampled`), а не против суммы всех
+   * хабов бакета — см. комментарий у `deriveStopTagsForBucket` ниже, почему
+   * это принципиально.
+   */
+  hubs: readonly HubStopTagSample[];
+  ownedTagCounts: Record<string, number>;
+  seedTags: readonly string[];
+  minHubCount?: number;
+  minHubShare?: number;
+  minOwnedCount?: number;
+  /** Общий потолок на итоговый (объединённый) список бакета — не на хаб. */
+  limit?: number;
+}
+
+/**
+ * Стоп-теги бакета = объединение стоп-тегов каждого его хаб-тега, посчитанных
+ * ПО ОТДЕЛЬНОСТИ.
+ *
+ * До этой задачи `bin/build-profile.ts` сэмплировал 3 хаб-тега бакета по 60
+ * релизов каждый, СКЛАДЫВАЛ все 180 счётчиков в один `hubTagCounts` и звал
+ * `deriveStopTags` один раз на весь пул с `releasesSampled: 180`. Порог 0.2
+ * от 180 — это 36 совпадений. Тег, характерный для ОДНОГО из трёх хабов
+ * (например, 'brutal death metal', концентрирующийся вокруг хаб-тега 'death
+ * metal', но почти не встречающийся в хабах 'old school death metal' и
+ * 'death-doom'), физически не может набрать больше своего потолка в 60 —
+ * 0.33 доли пула максимум, а на практике заметно меньше. Живой прогон
+ * (2026-08, см. отчёт по задаче) дал пустой стоп-лист во всех бакетах именно
+ * из-за этого: единственные теги, которым хватало пула на 36, — широкие
+ * зонтичные ('metal', 'death metal', 'black metal'), которые владелец и так
+ * честно держит в коллекции и которые в любом случае вырезает проверка
+ * владения ниже, а не узкие соседние поджанры, которым и полагалось стать
+ * стоп-тегами.
+ *
+ * Судить каждый хаб-тег СВОИМ порогом (0.2 от его же ~60 = 12, а не от 180)
+ * чинит это: тег, сосредоточенный в одном хабе, набирает 12 из этого одного
+ * хаба без разбавления двумя другими, несвязанными с ним хабами. Широкие
+ * зонтичные теги при этом не проскакивают порог per-hub случайно — их
+ * по-прежнему вырезает `ownedTagCounts` (владелец держит их по-настоящему),
+ * а не порог частоты.
+ *
+ * Объединение — простая уния списков без повторного порога на пул: решение
+ * "стоп-тег или нет" уже принято на уровне каждого хаба через `deriveStopTags`
+ * (вызывается здесь с `limit: Infinity` — общий лимит применяется один раз,
+ * после объединения, а не режет каждый хаб по отдельности до того, как
+ * объединение случилось); пересчитывать это решение заново по объединённым
+ * числам значило бы вернуть тот же дилюционный баг на другом шаге. Порядок
+ * финального списка — по суммарному сырому счёту тега по ВСЕМ хабам бакета
+ * (чисто для показа: что каузальнее в антипрофиле бакета в целом, а не
+ * решение "качественный тег или нет" — оно уже принято выше), после чего
+ * применяется общий `limit`.
+ */
+export function deriveStopTagsForBucket(input: BucketStopTagInput): string[] {
+  const limit = input.limit ?? 40;
+
+  const perHubResults = input.hubs.map((hub) =>
+    deriveStopTags({
+      hubTagCounts: hub.hubTagCounts,
+      ownedTagCounts: input.ownedTagCounts,
+      seedTags: input.seedTags,
+      releasesSampled: hub.releasesSampled,
+      minHubCount: input.minHubCount,
+      minHubShare: input.minHubShare,
+      minOwnedCount: input.minOwnedCount,
+      limit: Number.POSITIVE_INFINITY,
+    }),
+  );
+
+  /** Канонический ключ тега → сумма его сырых счётов по ВСЕМ хабам бакета — только для сортировки показа. */
+  const pooledCount = new Map<string, number>();
+  for (const hub of input.hubs) {
+    for (const [tag, count] of Object.entries(hub.hubTagCounts)) {
+      const key = canonicalizeTag(tag);
+      pooledCount.set(key, (pooledCount.get(key) ?? 0) + count);
+    }
+  }
+
+  // Один и тот же тег может независимо пройти в стоп-лист сразу нескольких
+  // хабов бакета — объединяем по каноническому ключу, оставляя написание из
+  // первого хаба, в котором тег встретился (детерминировано порядком
+  // `input.hubs`, который задаёт вызывающий код через `hubSampleTags`).
+  const seen = new Set<string>();
+  const merged: { key: string; display: string }[] = [];
+  for (const hubResult of perHubResults) {
+    for (const display of hubResult) {
+      const key = canonicalizeTag(display);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push({ key, display });
+    }
+  }
+
+  return merged
+    .sort((a, b) => (pooledCount.get(b.key) ?? 0) - (pooledCount.get(a.key) ?? 0))
+    .slice(0, limit)
+    .map((entry) => entry.display);
+}

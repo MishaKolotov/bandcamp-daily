@@ -20,7 +20,7 @@ import { fetchFanItems } from '../src/bandcamp/fan.ts';
 import { discover } from '../src/bandcamp/discover.ts';
 import { BUCKETS, bucketsOf, hubSampleTags } from '../src/profile/buckets.ts';
 import { buildProfile, type ProfileInput } from '../src/profile/build.ts';
-import { deriveStopTags } from '../src/profile/stop-tags.ts';
+import { deriveStopTagsForBucket, type HubStopTagSample } from '../src/profile/stop-tags.ts';
 import {
   buildLocationVocabulary,
   type LocationSample,
@@ -136,15 +136,24 @@ console.log(
 // на входе (см. locationVocabulary в BuildOptions), а не пристёгивается
 // постфактум.
 console.log('\nСобираю антипрофиль из тег-хабов Discover (для стоп-тегов и словаря мест)...');
-const bucketHubData = new Map<BucketId, { hubTagCounts: Record<string, number>; releasesSampled: number }>();
+/**
+ * Бакет → по одному сэмплу на каждый хаб-тег (НЕ пул счётчиков всех хабов
+ * бакета в одну запись). Раньше здесь была одна пара {hubTagCounts,
+ * releasesSampled} на весь бакет, все 3 хаба схлопывались в неё вместе — и
+ * именно это делало стоп-теги пустыми на живом прогоне (см. комментарий у
+ * `deriveStopTagsForBucket` в stop-tags.ts, разбор арифметики в отчёте по
+ * задаче). Каждый хаб теперь считается и передаётся дальше по отдельности.
+ */
+const bucketHubData = new Map<BucketId, HubStopTagSample[]>();
 const locationSamples: LocationSample[] = [];
 
 for (const bucket of BUCKETS) {
-  const hubTagCounts: Record<string, number> = {};
   const hubTags = hubSampleTags(bucket, HUB_TAGS_PER_BUCKET);
+  const hubs: HubStopTagSample[] = [];
 
-  let releasesSampled = 0;
   for (const tag of hubTags) {
+    const hubTagCounts: Record<string, number> = {};
+    let releasesSampled = 0;
     const hubItems = await discover(http, { tag, slice: 'top', size: HUB_SAMPLE_SIZE });
     for (const hubItem of hubItems) {
       locationSamples.push({ location: hubItem.location, artist: hubItem.artist });
@@ -155,10 +164,12 @@ for (const bucket of BUCKETS) {
         hubTagCounts[albumTag] = (hubTagCounts[albumTag] ?? 0) + 1;
       }
     }
+    hubs.push({ hubTagCounts, releasesSampled });
   }
 
-  bucketHubData.set(bucket.id, { hubTagCounts, releasesSampled });
-  console.log(`  ${bucket.channelTitle}: хаб-теги [${hubTags.join(', ')}], сэмплировано релизов хаба: ${releasesSampled}`);
+  bucketHubData.set(bucket.id, hubs);
+  const totalReleasesSampled = hubs.reduce((sum, hub) => sum + hub.releasesSampled, 0);
+  console.log(`  ${bucket.channelTitle}: хаб-теги [${hubTags.join(', ')}], сэмплировано релизов хаба: ${totalReleasesSampled}`);
 }
 
 /**
@@ -202,23 +213,26 @@ const profile = buildProfile(inputs, { now: new Date(), minReleases: 2, location
 
 console.log('\nСтоп-теги по бакетам...');
 for (const bucket of BUCKETS) {
-  const hubData = bucketHubData.get(bucket.id)!;
-
   // minHubShare/minHubCount/minOwnedCount умышленно не переданы — берём
-  // дефолты deriveStopTags (0.2 доли, пол 5, владение с 2 вхождений). Смена
-  // источника хаб-тегов (см. комментарий у HUB_TAGS_PER_BUCKET) не меняет ни
-  // число хабов на бакет, ни размер каждого — пул как был 60-180
-  // сэмплированных релизов, так и остался, а именно под этот диапазон
-  // калибровался порог 0.2 (см. комментарий у minHubShare в stop-tags.ts).
-  // Пустые стоп-листы живого прогона были следствием ДВУХ независимых
-  // причин — мусорного ВХОДА хабов (чинит hubSampleTags, уже сделано) и
-  // слишком мягкого теста владения (чинит minOwnedCount, см. отдельный
-  // коммит) — а не порога самой частоты в хабе, так что его не трогаем.
-  profile.buckets[bucket.id].stopTags = deriveStopTags({
-    hubTagCounts: hubData.hubTagCounts,
+  // дефолты deriveStopTags (0.2 доли, пол 5, владение с 2 вхождений), они не
+  // менялись.
+  //
+  // Пустые стоп-листы живого прогона (2026-08) были следствием ТРЁХ
+  // независимых причин, а не двух: мусорного ВХОДА хабов (чинит
+  // hubSampleTags, уже сделано), слишком мягкого теста владения (чинит
+  // minOwnedCount, отдельный коммит) — и порога частоты, который считался по
+  // ПУЛУ из трёх хабов (180 сэмплов, порог 36) вместо каждого хаба по
+  // отдельности (60 сэмплов, порог 12). Тег, характерный ровно для одного из
+  // трёх хабов, физически не мог набрать больше своего потолка в 60 из пула
+  // 180 — проходили только широкие зонтичные теги ('metal', 'death metal'),
+  // которые и так вырезает проверка владения, а не узкие соседние поджанры,
+  // которым и полагалось стать стоп-тегами. deriveStopTagsForBucket (см.
+  // stop-tags.ts) судит каждый хаб бакета своим порогом и объединяет
+  // результаты — подробный разбор арифметики в отчёте по задаче.
+  profile.buckets[bucket.id].stopTags = deriveStopTagsForBucket({
+    hubs: bucketHubData.get(bucket.id)!,
     ownedTagCounts,
     seedTags: bucket.seedTags,
-    releasesSampled: hubData.releasesSampled,
   });
 
   console.log(
