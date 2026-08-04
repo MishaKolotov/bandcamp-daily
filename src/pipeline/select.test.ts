@@ -35,6 +35,7 @@ test('на бакет выбирается по одному свежему и �
   const result = selectForBucket({
     bucket,
     seedTags: ['crust'],
+    hardRejectTags: [],
     fresh: [candidate(1), candidate(2)],
     archive: [candidate(3, { origin: 'archive' })],
     seen: new Set(),
@@ -49,6 +50,7 @@ test('показанное ранее (по URL) не предлагается �
   const result = selectForBucket({
     bucket,
     seedTags: ['crust'],
+    hardRejectTags: [],
     fresh: [candidate(1)],
     archive: [],
     seen: new Set(['https://x.test/album/1']),
@@ -68,6 +70,7 @@ test('itemId кандидата, показанного через другой 
   const result = selectForBucket({
     bucket,
     seedTags: ['crust'],
+    hardRejectTags: [],
     fresh: [candidate(999, { url: 'https://x.test/album/1' })],
     archive: [],
     seen: new Set(['https://x.test/album/1']),
@@ -81,6 +84,7 @@ test('отбракованные скорингом не попадают в в�
   const result = selectForBucket({
     bucket,
     seedTags: ['crust'],
+    hardRejectTags: [],
     fresh: [candidate(1, { tags: ['ambient'] })],
     archive: [],
     seen: new Set(),
@@ -95,6 +99,7 @@ test('оба пула пусты на входе — оба «не предла�
   const result = selectForBucket({
     bucket,
     seedTags: ['crust'],
+    hardRejectTags: [],
     fresh: [],
     archive: [],
     seen: new Set(),
@@ -109,6 +114,7 @@ test('побеждает кандидат с большим скором, ост
   const result = selectForBucket({
     bucket,
     seedTags: ['crust'],
+    hardRejectTags: [],
     fresh: [candidate(1, { tags: ['crust'] }), candidate(2, { tags: ['crust', 'd-beat'] })],
     archive: [],
     seen: new Set(),
@@ -124,6 +130,7 @@ test('в выбор кладутся совпавшие теги для стро
   const result = selectForBucket({
     bucket,
     seedTags: ['crust'],
+    hardRejectTags: [],
     fresh: [candidate(1, { tags: ['crust', 'd-beat'] })],
     archive: [],
     seen: new Set(),
@@ -137,6 +144,7 @@ test('запас ограничен alternativesCount', () => {
   const result = selectForBucket({
     bucket,
     seedTags: ['crust'],
+    hardRejectTags: [],
     fresh: [candidate(1), candidate(2), candidate(3), candidate(4), candidate(5)],
     archive: [],
     seen: new Set(),
@@ -152,6 +160,7 @@ test('ничья по скору решается детерминированн
   const forward = selectForBucket({
     bucket,
     seedTags: ['crust'],
+    hardRejectTags: [],
     fresh: [a, b],
     archive: [],
     seen: new Set(),
@@ -161,6 +170,7 @@ test('ничья по скору решается детерминированн
   const backward = selectForBucket({
     bucket,
     seedTags: ['crust'],
+    hardRejectTags: [],
     fresh: [b, a],
     archive: [],
     seen: new Set(),
@@ -176,6 +186,7 @@ test('дубликат по URL внутри одного пула схлопы�
   const forward = selectForBucket({
     bucket,
     seedTags: ['crust'],
+    hardRejectTags: [],
     fresh: [lower, higher],
     archive: [],
     seen: new Set(),
@@ -185,6 +196,7 @@ test('дубликат по URL внутри одного пула схлопы�
   const backward = selectForBucket({
     bucket,
     seedTags: ['crust'],
+    hardRejectTags: [],
     fresh: [higher, lower],
     archive: [],
     seen: new Set(),
@@ -201,6 +213,7 @@ test('один и тот же релиз, пришедший и в свежак,
   const result = selectForBucket({
     bucket,
     seedTags: ['crust'],
+    hardRejectTags: [],
     fresh: [candidate(1, { url: sharedUrl, origin: 'fresh' })],
     archive: [candidate(2, { url: sharedUrl, origin: 'archive' })],
     seen: new Set(),
@@ -224,6 +237,7 @@ test('запасной кандидат одного пула не повтор�
   const result = selectForBucket({
     bucket,
     seedTags: ['crust'],
+    hardRejectTags: [],
     fresh: [freshA, freshB],
     archive: [archiveB],
     seen: new Set(),
@@ -238,4 +252,51 @@ test('запасной кандидат одного пула не повтор�
   // B фигурирует как основной архивный пик — свежак не должен предлагать
   // его повторно как «другой кандидат».
   assert.deepEqual(fresh.alternatives, []);
+});
+
+// ---------------------------------------------------------------------------
+// Hard-reject: см. hardRejectTags в ../profile/score.ts. Проверяем именно то,
+// что до фикса не работало через bucket.stopTags — кандидат с сильным
+// совпадением по тегам, но несущий hard-reject тег, не должен побеждать даже
+// более слабого, но настоящего кандидата.
+// ---------------------------------------------------------------------------
+
+test('кандидат с hard-reject тегом не выбирается, даже если он сильнее остальных по скору', () => {
+  const compilation = candidate(1, { tags: ['crust', 'd-beat', 'compilation'] });
+  const genuine = candidate(2, { tags: ['crust'] });
+
+  const result = selectForBucket({
+    bucket,
+    seedTags: ['crust'],
+    hardRejectTags: ['compilation'],
+    fresh: [compilation, genuine],
+    archive: [],
+    seen: new Set(),
+    context: {},
+    alternativesCount: 3,
+  });
+
+  const fresh = picked(result.fresh);
+  assert.equal(fresh.candidate.itemId, 2, 'слабейший настоящий релиз обязан победить, компиляция вообще не в игре');
+  assert.deepEqual(fresh.alternatives, [], 'компиляция не должна попасть даже в запас');
+});
+
+test('кандидат с hard-reject тегом отсеивается из обоих пулов и не оставляет бакет без карточки, если есть кем заменить', () => {
+  const compilation = candidate(1, { tags: ['crust', 'd-beat', 'compilation'] });
+
+  const result = selectForBucket({
+    bucket,
+    seedTags: ['crust'],
+    hardRejectTags: ['compilation'],
+    fresh: [compilation],
+    archive: [],
+    seen: new Set(),
+    context: {},
+    alternativesCount: 3,
+  });
+
+  // Пул был непустой (1 кандидат), но единственный кандидат hard-reject —
+  // «не подошло», не «не предлагали» (та же семантика, что и у обычной
+  // отбраковки скорингом).
+  assert.equal(result.fresh.status, 'no-match');
 });

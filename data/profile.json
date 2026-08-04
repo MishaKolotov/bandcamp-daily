@@ -1,5 +1,14 @@
 {
   "generatedAt": "2026-08-04",
+  "hardRejectTags": [
+    "compilation",
+    "compilations",
+    "various artists",
+    "va",
+    "sampler",
+    "label sampler",
+    "mixtape"
+  ],
   "buckets": {
     "crust": {
       "tags": {

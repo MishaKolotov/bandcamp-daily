@@ -349,6 +349,14 @@ export async function runDaily(
       selection = selectForBucket({
         bucket: bucketProfile,
         seedTags: bucket.seedTags,
+        // `?? []` — та же защита, что и у остальных полей, читанных через
+        // readJson (см. комментарий у `Profile.hardRejectTags` в
+        // ../profile/build.ts и у seedTags выше в этом файле): readJson не
+        // валидирует форму файла против интерфейса, а data/profile.json
+        // хозяин правит руками — устаревший файл без этого поля не должен
+        // ронять весь дневной прогон, только тихо остаться без защиты от
+        // компиляций до следующей правки файла.
+        hardRejectTags: profile.hardRejectTags ?? [],
         fresh: [...hubFresh, ...followsFresh],
         archive: archivePool,
         seen: shown,

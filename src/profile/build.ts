@@ -36,6 +36,20 @@ export interface Profile {
   generatedAt: string;
   buckets: Record<BucketId, BucketProfile>;
   labels: Record<string, number>;
+  /**
+   * Глобальный (один на весь профиль, не per-bucket) список hard-reject
+   * тегов — см. одноимённый аргумент `score()` в `./score.ts` для полного
+   * разбора, чем это отличается от `BucketProfile.stopTags`. В отличие от
+   * `stopTags`, у этого поля нет автоматического источника: `stopTags`
+   * пересчитывается `deriveStopTagsForBucket` из хаб-сэмплов Discover
+   * (см. `bin/build-profile.ts`), а hardRejectTags — чисто вкусовая
+   * настройка хозяина ("не показывай мне компиляции ни при каких
+   * обстоятельствах"), для которой в принципе нет статистического сигнала
+   * в коллекции — `buildProfile` заполняет его пустым списком, а
+   * `bin/build-profile.ts` при пересборке переносит значение из уже
+   * существующего файла вперёд, а не сбрасывает (см. комментарий там же).
+   */
+  hardRejectTags: string[];
 }
 
 export interface BuildOptions {
@@ -310,5 +324,10 @@ export function buildProfile(items: ProfileInput[], options: BuildOptions): Prof
     generatedAt: options.now.toISOString().slice(0, 10),
     buckets,
     labels: normalize(labels),
+    // См. комментарий на `Profile.hardRejectTags`: у этого поля нет
+    // статистического источника в данных, buildProfile честно отдаёт
+    // пустой список — заполняет и сохраняет его руками хозяин (и переносит
+    // между пересборками bin/build-profile.ts).
+    hardRejectTags: [],
   };
 }

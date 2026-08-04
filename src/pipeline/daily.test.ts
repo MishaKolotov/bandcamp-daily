@@ -214,7 +214,7 @@ function fakeProfile(): Profile {
       weightSum: 1,
     };
   }
-  return { generatedAt: '2026-08-03', buckets, labels: {} };
+  return { generatedAt: '2026-08-03', buckets, labels: {}, hardRejectTags: [] };
 }
 
 function emptyState(): ApproveState {
@@ -301,6 +301,64 @@ test('runDaily: обходит бакеты generично по BUCKETS — не 
     new Set(BUCKETS.map((bucket) => bucket.id)),
   );
   assert.ok(persisted.length > 0, 'состояние должно было персиститься хотя бы раз');
+});
+
+test('runDaily: кандидат с тегом из profile.hardRejectTags не отправляется владельцу ни основным пиком, ни запасным', async () => {
+  // Прямая проверка сквозного провода profile.hardRejectTags -> selectForBucket
+  // -> score() (см. правку в daily.ts): для каждого хаб-тега discover отдаёт
+  // пару кандидатов — обычный и его же копию с довеском 'compilation'.
+  // Обычный проходит скоринг (несёт тег бакета), копия несёт тот же тег
+  // (то есть матчится НЕ слабее), но должна быть убита hardRejectTags
+  // целиком — ни как основной пик, ни как «другой кандидат» в запасе.
+  const profile = fakeProfile();
+  profile.hardRejectTags = ['compilation'];
+  const state = emptyState();
+  const telegram = baseTelegram();
+
+  const deps: DailyDeps = {
+    fresh: {
+      discover: async (opts) => [
+        { itemId: 1, url: `https://x.test/album/${opts.tag}`, title: opts.tag, artist: 'A', location: null },
+        {
+          itemId: 2,
+          url: `https://x.test/album/${opts.tag}-comp`,
+          title: `${opts.tag} comp`,
+          artist: 'B',
+          location: null,
+        },
+      ],
+      bandReleases: async () => [],
+      album: async (url) => {
+        const isComp = url.endsWith('-comp');
+        const tag = url.split('/').pop()!.replace(/-comp$/, '');
+        return album({ tags: isComp ? [tag, 'compilation'] : [tag] });
+      },
+    },
+    archive: { album: async () => null },
+    fetchOwnedUrls: async () => [],
+    fetchFollowSubdomains: async () => [],
+    telegram,
+    persistState: async () => {},
+    now: () => new Date('2026-08-03'),
+  };
+
+  await runDaily(profile, [], state, deps, baseOptions);
+
+  assert.equal(
+    state.pending.length,
+    BUCKETS.length,
+    'ровно по одному пику на бакет — некомпилированный кандидат нашёлся для каждого',
+  );
+  for (const card of state.pending) {
+    assert.ok(
+      !card.candidate.tags.includes('compilation'),
+      `бакет ${card.bucket} отправил владельцу компиляцию как основной пик`,
+    );
+    assert.ok(
+      card.alternatives.every((alt) => !alt.tags.includes('compilation')),
+      `бакет ${card.bucket} держит компиляцию в запасе «другой кандидат»`,
+    );
+  }
 });
 
 test('runDaily: разбор нажатия (post) во время дренажа backlog пишет в persistState ровно то, что произвёл handleUpdates', async () => {
@@ -477,7 +535,7 @@ test('runDaily: пустой бакет (без свежака и архива) 
     for (const bucket of BUCKETS) {
       buckets[bucket.id] = { tags: {}, stopTags: [], releaseCount: 0, weightSum: 0 };
     }
-    return { generatedAt: '2026-08-03', buckets, labels: {} };
+    return { generatedAt: '2026-08-03', buckets, labels: {}, hardRejectTags: [] };
   })();
   const state = emptyState();
   const notes: string[] = [];

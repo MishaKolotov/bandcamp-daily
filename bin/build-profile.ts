@@ -19,7 +19,7 @@ import { fetchAlbum } from '../src/bandcamp/album.ts';
 import { fetchFanItems } from '../src/bandcamp/fan.ts';
 import { discover } from '../src/bandcamp/discover.ts';
 import { BUCKETS, bucketsOf, hubSampleTags } from '../src/profile/buckets.ts';
-import { buildProfile, type ProfileInput } from '../src/profile/build.ts';
+import { buildProfile, type Profile, type ProfileInput } from '../src/profile/build.ts';
 import { deriveStopTagsForBucket, type HubStopTagSample } from '../src/profile/stop-tags.ts';
 import {
   buildLocationVocabulary,
@@ -248,6 +248,24 @@ for (const bucket of BUCKETS) {
     `  ${bucket.channelTitle}: стоп-тегов найдено: ${profile.buckets[bucket.id].stopTags.length}`,
   );
 }
+
+// hardRejectTags (см. `Profile.hardRejectTags` в `../src/profile/build.ts`)
+// — чисто ручная настройка хозяина, без источника в данных: в отличие от
+// stopTags выше, для неё нет deriveStopTagsForBucket, который пересчитал бы
+// список заново на каждой пересборке. buildProfile() честно вернула для
+// него пустой список (у неё нет входа, из которого его вывести) — если
+// записать профиль как есть, пересборка (даже штатная, с --force и
+// осознанным согласием на потерю правок весов — см. `assertWritable` выше)
+// молча стёрла бы список компиляций, который хозяин завёл руками, и защита
+// исчезла бы без единого предупреждения в выводе скрипта. Переносим
+// значение из уже существующего файла вперёд; если файла ещё не было
+// (самая первая сборка) — пустой список, как и вернула buildProfile.
+const existingProfile = await readJson<Profile | null>(PROFILE_PATH, null);
+profile.hardRejectTags = existingProfile?.hardRejectTags ?? [];
+console.log(
+  `\nhardRejectTags: перенесено из существующего файла — ${profile.hardRejectTags.length} тег(ов): ` +
+    `${profile.hardRejectTags.join(', ') || '(пусто)'}.`,
+);
 
 await writeJson(PROFILE_PATH, profile);
 

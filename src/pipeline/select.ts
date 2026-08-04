@@ -52,6 +52,15 @@ export interface SelectOptions {
    * забытое поле должно ронять компиляцию, а не тихо менять поведение.
    */
   seedTags: readonly string[];
+  /**
+   * Глобальный список hard-reject тегов (см. `hardRejectTags` у `score()` в
+   * `../profile/score.ts` и `Profile.hardRejectTags` в `../profile/build.ts`)
+   * — прокидывается насквозь так же, как и `seedTags`: обязательное поле,
+   * потому что сам `score()` требует его обязательным аргументом, а не
+   * опциональным — забытое поле должно ронять компиляцию, а не тихо
+   * отключать защиту от компиляций.
+   */
+  hardRejectTags: readonly string[];
   fresh: Candidate[];
   archive: Candidate[];
   /**
@@ -108,12 +117,13 @@ function rankPool(
   pool: Candidate[],
   bucket: BucketProfile,
   seedTags: readonly string[],
+  hardRejectTags: readonly string[],
   context: ScoreContext,
   excluded: ReadonlySet<string>,
 ): RankedEntry[] {
   return dedupeByUrl(pool)
     .filter((candidate) => !excluded.has(candidate.url))
-    .map((candidate) => ({ candidate, result: score(candidate, bucket, seedTags, context) }))
+    .map((candidate) => ({ candidate, result: score(candidate, bucket, seedTags, hardRejectTags, context) }))
     .filter((entry) => !entry.result.rejected)
     .sort((a, b) => {
       if (b.result.total !== a.result.total) return b.result.total - a.result.total;
@@ -170,11 +180,25 @@ function buildOutcome(
  * показанного передаются уже готовыми.
  */
 export function selectForBucket(options: SelectOptions): BucketSelection {
-  const freshRanked = rankPool(options.fresh, options.bucket, options.seedTags, options.context, options.seen);
+  const freshRanked = rankPool(
+    options.fresh,
+    options.bucket,
+    options.seedTags,
+    options.hardRejectTags,
+    options.context,
+    options.seen,
+  );
   const freshTop = freshRanked[0];
 
   const claimedByFresh = freshTop ? new Set([...options.seen, freshTop.candidate.url]) : options.seen;
-  const archiveRanked = rankPool(options.archive, options.bucket, options.seedTags, options.context, claimedByFresh);
+  const archiveRanked = rankPool(
+    options.archive,
+    options.bucket,
+    options.seedTags,
+    options.hardRejectTags,
+    options.context,
+    claimedByFresh,
+  );
   const archiveTop = archiveRanked[0];
 
   const fresh = buildOutcome(options.fresh.length, freshRanked, archiveTop?.candidate.url, options.alternativesCount);
