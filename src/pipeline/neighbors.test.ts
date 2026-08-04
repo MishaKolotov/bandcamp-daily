@@ -44,6 +44,7 @@ test('сосед с большим пересечением получает б�
     seedCount: 3,
     candidateLimit: 10,
     neighborLimit: 10,
+    minCollectionSize: 0,
   });
   assert.equal(neighbors[0]?.fanId, 10);
   assert.ok(neighbors[0]!.weight > neighbors[1]!.weight);
@@ -60,6 +61,7 @@ test('сам владелец в соседи не попадает', async () =
     seedCount: 1,
     candidateLimit: 5,
     neighborLimit: 5,
+    minCollectionSize: 0,
   });
   assert.deepEqual(neighbors, []);
 });
@@ -75,6 +77,7 @@ test('в соседе сохраняются его релизы, чтобы е�
     seedCount: 1,
     candidateLimit: 5,
     neighborLimit: 5,
+    minCollectionSize: 0,
   });
   assert.deepEqual(neighbor?.items.map((i) => i.itemId), [1, 5]);
 });
@@ -90,6 +93,7 @@ test('соседи с нулевым пересечением отбрасыва
     seedCount: 1,
     candidateLimit: 5,
     neighborLimit: 5,
+    minCollectionSize: 0,
   });
   assert.deepEqual(neighbors, []);
 });
@@ -115,6 +119,7 @@ test('усечение большой чужой коллекции не иск�
       seedCount: 4,
       candidateLimit: 10,
       neighborLimit: 10,
+      minCollectionSize: 0,
     });
     return neighbor?.weight;
   };
@@ -148,6 +153,7 @@ test('родственная душа с маленькой коллекцией
     seedCount: 100,
     candidateLimit: 10,
     neighborLimit: 10,
+    minCollectionSize: 0,
   });
 
   const kindred = neighbors.find((n) => n.fanId === 10);
@@ -172,6 +178,7 @@ test('мёртвый аккаунт не роняет весь прогон — 
       seedCount: 1,
       candidateLimit: 10,
       neighborLimit: 10,
+      minCollectionSize: 0,
     }),
   );
   assert.deepEqual(
@@ -201,6 +208,7 @@ test('затравка берёт разреженную выборку по в�
     seedCount: 2,
     candidateLimit: 10,
     neighborLimit: 10,
+    minCollectionSize: 0,
   });
   assert.deepEqual(queried, [1, 4]);
 });
@@ -231,6 +239,7 @@ test('candidateLimit ограничивает поход в чужие колл�
     seedCount: 3,
     candidateLimit: 2,
     neighborLimit: 10,
+    minCollectionSize: 0,
   });
   assert.deepEqual(calls, [10, 20]);
 });
@@ -255,6 +264,90 @@ test('neighborLimit обрезает итоговый список после с
     seedCount: 4,
     candidateLimit: 10,
     neighborLimit: 2,
+    minCollectionSize: 0,
   });
   assert.deepEqual(neighbors.map((n) => n.fanId), [10, 20]);
+});
+
+test('minCollectionSize отбрасывает соседа с маленькой коллекцией, даже если пересечение есть', async () => {
+  const deps: NeighborDeps = {
+    collectors: async () => [10],
+    collectionOf: async () => [item(1), item(2)], // theirs.length = 2
+  };
+  const neighbors = await computeNeighbors(deps, {
+    ownerFanId: 999,
+    mine: [item(1)],
+    seedCount: 1,
+    candidateLimit: 5,
+    neighborLimit: 5,
+    minCollectionSize: 3,
+  });
+  assert.deepEqual(neighbors, []);
+});
+
+test('коллекция ровно из minCollectionSize позиций проходит порог (включительно)', async () => {
+  const filler = (from: number, count: number) => Array.from({ length: count }, (_, i) => item(from + i));
+  const deps: NeighborDeps = {
+    collectors: async () => [10],
+    collectionOf: async () => [item(1), ...filler(1000, 2)], // theirs.length = 3
+  };
+  const neighbors = await computeNeighbors(deps, {
+    ownerFanId: 999,
+    mine: [item(1)],
+    seedCount: 1,
+    candidateLimit: 5,
+    neighborLimit: 5,
+    minCollectionSize: 3,
+  });
+  assert.deepEqual(
+    neighbors.map((n) => n.fanId),
+    [10],
+  );
+});
+
+test('порог убирает шумовой топ-результат: крошечная коллекция с двумя общими релизами больше не обгоняет настоящее совпадение', async () => {
+  // Форма повторяет боевой прогон, вскрывший баг: у владельца 223 релиза
+  // (mineIds.size = 223 — как в проде, это важно: иначе знаменатель
+  // «настоящего» совпадения тоже упёрся бы в размер mine и картина бы не
+  // повторилась). Сосед 10 владеет всего 11 релизами, 2 из них общие с
+  // владельцем — 2/11 ≈ 0.18, вес выше, чем у любого настоящего совпадения,
+  // чисто из-за крошечного знаменателя. Сосед 20 владеет 200 релизами, 20
+  // из них общие — 20/200 = 0.1, ниже по абсолютному значению, но это
+  // НАСТОЯЩЕЕ совпадение на большой выборке. Без порога шумовой сосед 10
+  // обгоняет настоящего 20; порог обязан убрать 10 целиком, а не просто
+  // понизить его в рейтинге.
+  const mine = Array.from({ length: 223 }, (_, i) => item(i + 1));
+  const noisy = [item(1), item(2), ...Array.from({ length: 9 }, (_, i) => item(500 + i))];
+  const genuine = [
+    ...Array.from({ length: 20 }, (_, i) => item(i + 1)),
+    ...Array.from({ length: 180 }, (_, i) => item(700 + i)),
+  ];
+
+  const deps: NeighborDeps = {
+    collectors: async () => [10, 20],
+    collectionOf: async (fanId) => (fanId === 10 ? noisy : genuine),
+  };
+
+  const withoutThreshold = await computeNeighbors(deps, {
+    ownerFanId: 999,
+    mine,
+    seedCount: 1,
+    candidateLimit: 10,
+    neighborLimit: 10,
+    minCollectionSize: 0,
+  });
+  assert.equal(withoutThreshold[0]?.fanId, 10);
+
+  const withThreshold = await computeNeighbors(deps, {
+    ownerFanId: 999,
+    mine,
+    seedCount: 1,
+    candidateLimit: 10,
+    neighborLimit: 10,
+    minCollectionSize: 100,
+  });
+  assert.deepEqual(
+    withThreshold.map((n) => n.fanId),
+    [20],
+  );
 });

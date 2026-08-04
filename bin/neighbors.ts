@@ -30,6 +30,14 @@
  * - NEIGHBOR_LIMIT = 40 — сколько соседей оставить после сортировки по
  *   весу. Столько фанатов достаточно, чтобы у archive-пула (Task 21) была
  *   опора не на единицы голосов.
+ * - MIN_COLLECTION_SIZE = 112 — минимальный размер ЧУЖОЙ коллекции, ниже
+ *   которого сосед отбрасывается независимо от overlap (см. подробный
+ *   разбор у NeighborOptions.minCollectionSize в src/pipeline/neighbors.ts).
+ *   Половина владельческих 223: та точка, где один случайно общий релиз
+ *   перестаёт двигать вес больше, чем на удвоенное "зерно" метрики
+ *   (2/223 ≈ 0.009). На первом живом прогоне без этого порога топ-1 занял
+ *   сосед с коллекцией из 11 релизов и 2 общими — 2/11 = 0.18, выше любого
+ *   настоящего совпадения в списке.
  *
  * Стоимость прогона (900 мс между запросами):
  *   ~12 (своя коллекция) + 40 (семена → collectors) + до 80×15 = 1200
@@ -52,6 +60,8 @@ const NEIGHBORS_PATH = 'data/neighbors.json';
 const SEED_COUNT = 40;
 const CANDIDATE_LIMIT = 80;
 const NEIGHBOR_LIMIT = 40;
+/** Минимальный размер чужой коллекции — см. обоснование в шапке файла. */
+const MIN_COLLECTION_SIZE = 112;
 /** Явный предел страниц на ЧУЖУЮ коллекцию — см. обоснование в шапке файла. */
 const STRANGER_MAX_PAGES = 15;
 /** Как часто печатать прогресс по проверенным кандидатам. */
@@ -121,6 +131,7 @@ const neighbors = await computeNeighbors(
     seedCount: SEED_COUNT,
     candidateLimit: CANDIDATE_LIMIT,
     neighborLimit: NEIGHBOR_LIMIT,
+    minCollectionSize: MIN_COLLECTION_SIZE,
   },
 );
 
