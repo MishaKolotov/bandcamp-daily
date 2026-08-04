@@ -35,13 +35,13 @@ export const BUCKETS: readonly BucketDef[] = Object.freeze([
     // 'death-doom' и 'death doom' были двумя записями одного канонического
     // тега — см. комментарий у crust.seedTags выше про canonicalizeTag.
     // Оставлено принятое написание (Wikipedia: «Death-doom»).
-    seedTags: Object.freeze([
-      'death metal',
-      'osdm',
-      'old school death metal',
-      'death-doom',
-      'brutal death metal',
-    ]),
+    // 'brutal death metal' убран из опорных по данным живого прогона: в
+    // коллекции владельца таких релизов ноль, зато в хабе дэт-метала тег
+    // встречается на 27 релизах из 60. Как опорный он объявлял бы жанром
+    // канала то, чего владелец не слушает, и заодно блокировал сам себя от
+    // попадания в стоп-лист — семейство брутал/слэм именно поэтому и должно
+    // отсекаться антипрофилем, а не притягиваться.
+    seedTags: Object.freeze(['death metal', 'osdm', 'old school death metal', 'death-doom']),
   }),
   Object.freeze({
     id: 'hardcore-punk' as const,
