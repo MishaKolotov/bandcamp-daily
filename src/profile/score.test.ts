@@ -83,18 +83,21 @@ test('знакомый лейбл поднимает скор', () => {
   assert.ok(known.total > plain.total);
 });
 
-test('популярность добавляет мало и не перебивает совпадение по тегам', () => {
-  // Оба кандидата должны сами пройти порог совпадения тегов, иначе тест
-  // проверяет отбраковку по полу, а не популярность: hype несёт только
-  // опорный тег (0.5 — впритык проходит порог) плюс запредельный хайп,
-  // match несёт опорный и топовый не-опорный тег без единого "коллекта".
+test('популярность релиза на скор не влияет вообще', () => {
+  // alsoCollected заполняется только у позиций из коллекции владельца, а
+  // кандидаты приходят из Discover и от соседей — там это поле всегда 0
+  // (см. комментарий в score.ts). Пока брать число неоткуда, скор обязан
+  // быть к нему полностью безразличен: иначе в формуле снова заведётся
+  // ветка, которая по факту никогда не срабатывает.
   const hype = score(candidate({ tags: ['crust'], alsoCollected: 1_000_000_000 }), bucket, seedTags, {});
-  const match = score(candidate({ tags: ['crust', 'discharge worship'] }), bucket, seedTags, {});
+  const quiet = score(candidate({ tags: ['crust'], alsoCollected: 0 }), bucket, seedTags, {});
   assert.equal(hype.rejected, false);
-  // Популярность капается на 0.5 (см. Math.min в score.ts): даже миллиард
-  // "also collected" не даёт больше tagScore(0.5) + 0.5 = 1 — если бы
-  // коэффициент или потолок разъехались, эта проверка бы поймала.
-  assert.equal(hype.total, 1);
+  assert.equal(hype.total, quiet.total);
+  assert.equal(hype.total, 0.5);
+
+  // И совпадение по тегам по-прежнему решает: релиз с характерным тегом
+  // обгоняет релиз с одним лишь опорным, сколько бы его ни «собрали».
+  const match = score(candidate({ tags: ['crust', 'discharge worship'] }), bucket, seedTags, {});
   assert.ok(match.total > hype.total);
 });
 

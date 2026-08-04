@@ -156,19 +156,22 @@ export function score(
 
   const labelKey = candidate.label?.trim().toLowerCase() ?? '';
   const labelBonus = 0.7 * (context.labels?.[labelKey] ?? 0);
-  // alsoCollected у свежих кандидатов всегда 0 — Discover-ответ Bandcamp его
-  // не отдаёт, так что этот член фактически различает только внутри пула
-  // архивных кандидатов. Это безопасно, пока свежий и архивный пул ранжирует
-  // отдельно шаг отбора; если пулы когда-нибудь объединят в один общий
-  // рейтинг, свежие релизы окажутся молча обделены этим бонусом.
-  const popularity = Math.min(0.5, 0.15 * Math.log10(1 + candidate.alsoCollected));
+  // Бонуса за популярность здесь нет намеренно. `alsoCollected` заполняется
+  // только у позиций из коллекции самого владельца (fan.ts), а кандидаты
+  // приходят из Discover и из коллекций соседей — обе ветки (fresh.ts,
+  // archive.ts) проставляют туда 0, потому что взять число неоткуда:
+  // ни ответ Discover, ни ld+json страницы релиза его не содержат. Раньше
+  // здесь стоял логарифмический член от этого поля — он всегда давал ровно
+  // ноль, то есть был мёртвой веткой скоринга с комментарием, описывающим
+  // поведение, которого нет. Если популярность когда-нибудь понадобится,
+  // сначала нужно найти, откуда её брать, и только потом возвращать член.
   const stopPenalty = 0.8 * stopHits;
   const feedbackPenalty = Math.min(
     FEEDBACK_PENALTY_CAP,
     tags.reduce((sum, tag) => sum + 0.25 * (context.tagPenalties?.[tag] ?? 0), 0),
   );
 
-  const total = tagScore + labelBonus + popularity - stopPenalty - feedbackPenalty;
+  const total = tagScore + labelBonus - stopPenalty - feedbackPenalty;
   const rejected = total <= 0;
   return {
     // Обе ветки отбраковки репортят total: 0 — форма результата не должна
