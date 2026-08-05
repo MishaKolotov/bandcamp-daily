@@ -1,5 +1,44 @@
 {
-  "pending": [],
+  "pending": [
+    {
+      "bucket": "hardcore-punk",
+      "messageId": 22,
+      "hasPhoto": true,
+      "candidate": {
+        "itemId": 1872676028,
+        "url": "https://rarevitaminrecords.bandcamp.com/album/are-we-cool",
+        "title": "Are We Cool?",
+        "artist": "Jimmy Dammage",
+        "label": "Rare Vitamin Records",
+        "tags": [
+          "rock",
+          "garage punk",
+          "hardcore punk",
+          "post-punk",
+          "psychedelic rock",
+          "punk",
+          "northwich"
+        ],
+        "releasedAt": "2026-08-03",
+        "artUrl": "https://f4.bcbits.com/img/a1489167917_10.jpg",
+        "alsoCollected": 0,
+        "origin": "fresh"
+      },
+      "matchedTags": [
+        "post-punk",
+        "d-beat",
+        "crust",
+        "crust",
+        "hardcore",
+        "punk",
+        "metal punk",
+        "crust punk",
+        "crustpunk",
+        "dbeatrawpunk"
+      ],
+      "alternatives": []
+    }
+  ],
   "posted": [
     {
       "itemId": 5373384218880546,
@@ -64,6 +103,38 @@
       "title": "Sin Servicio",
       "artist": "Sobra",
       "postedAt": "2026-08-04"
+    },
+    {
+      "itemId": 2478721580843175,
+      "bucket": "crust",
+      "url": "https://zyclone.bandcamp.com/album/visions-of-impending-death",
+      "title": "Visions of Impending Death",
+      "artist": "Zyclone",
+      "postedAt": "2026-08-05"
+    },
+    {
+      "itemId": 2706938959,
+      "bucket": "death-metal",
+      "url": "https://horrifiermetal.bandcamp.com/album/revelations-of-gore",
+      "title": "Revelations of Gore",
+      "artist": "Horrifier",
+      "postedAt": "2026-08-05"
+    },
+    {
+      "itemId": 1748195014580694,
+      "bucket": "hardcore-punk",
+      "url": "https://stuccolabel.bandcamp.com/album/excess-blood",
+      "title": "Excess Blood",
+      "artist": "EXCESS BLOOD",
+      "postedAt": "2026-08-05"
+    },
+    {
+      "itemId": 2137810366,
+      "bucket": "black-metal",
+      "url": "https://wealdknight.bandcamp.com/album/across-the-moor",
+      "title": "Across the Moor",
+      "artist": "Weald Knight",
+      "postedAt": "2026-08-05"
     }
   ],
   "feedbackTags": {
@@ -106,7 +177,23 @@
     "https://thegrassgardenjphc.bandcamp.com/album/the-grass-garden",
     "https://nostalgiarecord2.bandcamp.com/album/leyendas-de-kuskatan",
     "https://yellowcakephx.bandcamp.com/album/can-you-see-the-future",
-    "https://sobradelaspeores.bandcamp.com/album/sin-servicio"
+    "https://sobradelaspeores.bandcamp.com/album/sin-servicio",
+    "https://agipunkrecords.bandcamp.com/album/ag158-death-gasp-s-t",
+    "https://agipunkrecords.bandcamp.com/album/ag157-voltage-s-t",
+    "https://sprangdavaltarmar.bandcamp.com/album/ruttna-demos-epn",
+    "https://absolutnoise.bandcamp.com/album/deafen-and-disarm-2026-split-w-destruct",
+    "https://ragdollrecords.bandcamp.com/album/tape-2",
+    "https://11pmrecords.bandcamp.com/album/warheads-on-foreheads",
+    "https://flowernewyorkcity.bandcamp.com/album/hardly-a-dream",
+    "https://zyclone.bandcamp.com/album/visions-of-impending-death",
+    "https://miscreation.bandcamp.com/album/miscreation",
+    "https://ritualgrief.bandcamp.com/album/vae-victis",
+    "https://deathmetalpromotion.bandcamp.com/album/death-metal-tribute-to-ozzy",
+    "https://horrifiermetal.bandcamp.com/album/revelations-of-gore",
+    "https://curaab.bandcamp.com/album/to-the-end-of-suffering",
+    "https://alloutattak.bandcamp.com/album/split-w-trigger-damage",
+    "https://stuccolabel.bandcamp.com/album/excess-blood",
+    "https://wealdknight.bandcamp.com/album/across-the-moor"
   ],
-  "lastUpdateId": 910432851
+  "lastUpdateId": 910432868
 }
