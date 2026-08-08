@@ -6,7 +6,21 @@ export interface ProfileInput {
   tags: string[];
   label: string | null;
   addedAt: string;
-  source: 'collection' | 'wishlist';
+  /**
+   * `spotify` — не покупка и не желание купить, а факт прослушивания: артист
+   * из топа или сохранённого Spotify, разрешённый на Bandcamp ради его тегов
+   * (см. `bin/spotify-crosswalk.ts`). Заведён отдельным источником, а не
+   * подмешан к вишлисту, потому что весит иначе — см. `weightOf`.
+   */
+  source: 'collection' | 'wishlist' | 'spotify';
+  /**
+   * Множитель поверх веса источника, 1 по умолчанию.
+   *
+   * Нужен входам, у которых есть собственная мера значимости: у артиста из
+   * Spotify это место в топе и число сохранённых треков. У покупок такой меры
+   * нет — релиз либо куплен, либо нет, — поэтому поле опциональное.
+   */
+  weight?: number;
 }
 
 export interface BucketProfile {
@@ -85,9 +99,17 @@ export interface BuildOptions {
  * Покупки/желания за последний год важнее давних: вкус едет со временем.
  */
 function weightOf(item: ProfileInput, now: Date): number {
+  // Прослушанное в Spotify весит меньше и покупки, и желания купить: заплатить
+  // за релиз или хотя бы отложить его — заметно более сильное свидетельство
+  // вкуса, чем послушать. Вес плоский, без множителя свежести: у топ-артистов
+  // Spotify нет даты добавления, и подставлять сюда «сегодня» значило бы
+  // выдать всю выборку за свежайшую и перевесить ею реальные покупки.
+  if (item.source === 'spotify') return 0.9 * (item.weight ?? 1);
+
   const ageDays = (now.getTime() - new Date(item.addedAt).getTime()) / 86_400_000;
   const recency = ageDays <= 365 ? 1.5 : ageDays <= 1095 ? 1.2 : 1;
-  return item.source === 'wishlist' ? recency * 1.2 : recency;
+  const base = item.source === 'wishlist' ? recency * 1.2 : recency;
+  return base * (item.weight ?? 1);
 }
 
 function normalize(counts: Map<string, number>): Record<string, number> {

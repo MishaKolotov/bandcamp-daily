@@ -93,6 +93,7 @@ console.log(
 const fanItems = [...collection, ...wishlist];
 
 console.log('Читаю страницы релизов (первый раз долго, дальше — из дискового кэша .cache/)...');
+const CROSSWALK_PATH = 'data/spotify-crosswalk.json';
 const inputs: ProfileInput[] = [];
 /**
  * Тег → на скольких релизах коллекции+вишлиста встретился — вход для
@@ -211,6 +212,53 @@ if (existingVocabFile && !forceVocabRewrite) {
       `${harvestedLocations.length} записей, записал в ${LOCATION_VOCAB_PATH}. Просмотри файл руками — ` +
       'это единственная защита от ложных срабатываний (город, который по совпадению значит что-то ещё).',
   );
+}
+
+// Артисты из Spotify, разрешённые на Bandcamp ради их тегов
+// (`bin/spotify-crosswalk.ts`). Единственный источник вкуса для бакета
+// электроники: покупок в этом жанре у владельца нет ни одной, а слушает он
+// его наравне с панком. Каждый артист входит как один псевдо-релиз со своими
+// тегами — дальше буквально та же машинерия, что и для покупок:
+// перепредставленность тега, порог minReleases, вычитание географии,
+// стоп-теги. Никаких исключений в логике профиля ради этого источника нет.
+//
+// Файла может не быть (кросволк не прогоняли) — это не повод падать: профиль
+// соберётся по одному Bandcamp, просто бакет электроники останется пустым.
+const crosswalk = await readJson<{
+  tags?: { tag: string; weight: number; artists: string[] }[];
+  matchedOnBandcamp?: number;
+} | null>(CROSSWALK_PATH, null);
+
+if (crosswalk?.tags?.length) {
+  // Обратная развёртка: в файле теги → артисты, а профилю нужны релизы с
+  // тегами. Собираем по артисту его набор тегов и вес.
+  const tagsByArtist = new Map<string, { tags: string[]; weight: number }>();
+  for (const entry of crosswalk.tags) {
+    for (const artist of entry.artists) {
+      const existing = tagsByArtist.get(artist) ?? { tags: [], weight: 0 };
+      existing.tags.push(entry.tag);
+      existing.weight = Math.max(existing.weight, entry.weight);
+      tagsByArtist.set(artist, existing);
+    }
+  }
+  for (const [, artist] of tagsByArtist) {
+    inputs.push({
+      tags: artist.tags,
+      label: null,
+      addedAt: new Date().toISOString().slice(0, 10),
+      source: 'spotify',
+      // Вес тега нормирован к 1 у самого частого; поднимаем пол до 0.3, иначе
+      // длинный хвост артистов с одним тегом входил бы почти нулевым весом и
+      // не влиял бы ни на что, ради чего его и тянули.
+      weight: Math.max(artist.weight, 0.3),
+    });
+  }
+  console.log(
+    `\nSpotify: добавил ${tagsByArtist.size} артистов как псевдо-релизы ` +
+      `(из ${crosswalk.matchedOnBandcamp ?? '?'} найденных на Bandcamp).`,
+  );
+} else {
+  console.log('\nSpotify: data/spotify-crosswalk.json нет или он пуст — бакет электроники останется пустым.');
 }
 
 const profile = buildProfile(inputs, { now: new Date(), minReleases: 2, locationVocabulary });

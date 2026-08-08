@@ -1,5 +1,5 @@
 /** Идентификатор жанрового бакета — среза вкуса владельца, против профиля которого скорится кандидат. */
-export type BucketId = 'crust' | 'death-metal' | 'hardcore-punk' | 'black-metal';
+export type BucketId = 'crust' | 'death-metal' | 'hardcore-punk' | 'black-metal' | 'electronic';
 
 /** Позиция из коллекции или вишлиста фаната. */
 export interface FanItem {

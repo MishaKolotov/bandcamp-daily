@@ -76,6 +76,38 @@ export const BUCKETS: readonly BucketDef[] = Object.freeze([
     seedTags: Object.freeze(['hardcore punk', 'powerviolence', 'raw punk', 'ukhc', 'punk', 'hardcore']),
   }),
   Object.freeze({
+    id: 'electronic' as const,
+    title: 'электроника',
+    // Единственный бакет, вкус для которого взят НЕ из покупок на Bandcamp:
+    // электроники в коллекции владельца нет ни одного релиза, зато в
+    // сохранённом Spotify её половина слушаемого (113 артистов с тегом
+    // 'electronic' против 85 с 'punk' — см. data/spotify-crosswalk.json).
+    // Профиль для него собирается из тех же артистов, разрешённых на Bandcamp
+    // (см. bin/build-profile.ts).
+    //
+    // Голых 'electronic', 'house' и 'ambient' в опорных нет намеренно. Это
+    // зонтики на сотни тысяч релизов — та же ловушка, что с 'punk' и 'metal'
+    // (см. orderSeedTagsBySpecificity ниже): по ним хаб дня забьётся чем
+    // угодно. Составные и узкие теги идут первыми и решают, бакет ли это,
+    // голые 'techno'/'trance' остаются как широкая подстраховка.
+    seedTags: Object.freeze([
+      'acid techno',
+      'hard techno',
+      'hard trance',
+      'acid trance',
+      'goa trance',
+      'psytrance',
+      'industrial techno',
+      'breakcore',
+      'hardtekno',
+      'gabber',
+      'jungle',
+      'techno',
+      'trance',
+      'rave',
+    ]),
+  }),
+  Object.freeze({
     id: 'black-metal' as const,
     title: 'блэк-метал',
     // 'black metal' и 'raw black metal' — впрямую подтверждены тем же
