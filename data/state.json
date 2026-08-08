@@ -1141,6 +1141,417 @@
           "origin": "fresh"
         }
       ]
+    },
+    {
+      "bucket": "death-metal",
+      "messageId": 39,
+      "hasPhoto": true,
+      "candidate": {
+        "itemId": 2510908378,
+        "url": "https://abhorrentexecration.bandcamp.com/album/malicious-eternal",
+        "title": "Malicious Eternal",
+        "artist": "Abhorrent Execration",
+        "label": null,
+        "tags": [
+          "metal",
+          "black metal",
+          "death metal",
+          "metal",
+          "metal of death",
+          "osdm",
+          "power duo",
+          "primitive",
+          "raw",
+          "war metal",
+          "bordeaux"
+        ],
+        "releasedAt": "2026-08-07",
+        "artUrl": "https://f4.bcbits.com/img/a0791233188_10.jpg",
+        "alsoCollected": 0,
+        "origin": "fresh"
+      },
+      "matchedTags": [
+        "metal",
+        "metal",
+        "death metal",
+        "osdm",
+        "war metal",
+        "black metal"
+      ],
+      "alternatives": [
+        {
+          "itemId": 1891071739,
+          "url": "https://deteriorot.bandcamp.com/album/ceremonies-of-blasphemy-35th-anniversary",
+          "title": "Ceremonies of Blasphemy 35th Anniversary",
+          "artist": "Deteriorot",
+          "label": null,
+          "tags": [
+            "death metal",
+            "metal",
+            "osdm",
+            "old school death metal",
+            "osdm",
+            "paterson"
+          ],
+          "releasedAt": "2026-08-07",
+          "artUrl": "https://f4.bcbits.com/img/a4273640287_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        },
+        {
+          "itemId": 3308646744,
+          "url": "https://projectsilence.bandcamp.com/album/final-report",
+          "title": "Final Report",
+          "artist": "Project Silence",
+          "label": null,
+          "tags": [
+            "metal",
+            "synthwave & darksynth",
+            "death metal",
+            "industrial",
+            "industrial metal",
+            "melodic death metal",
+            "metal",
+            "finland"
+          ],
+          "releasedAt": "2026-08-07",
+          "artUrl": "https://f4.bcbits.com/img/a1450659625_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        },
+        {
+          "itemId": 84854272,
+          "url": "https://axepusher.bandcamp.com/album/axe-pusher",
+          "title": "Axe Pusher",
+          "artist": "Axe Pusher",
+          "label": null,
+          "tags": [
+            "death metal",
+            "extreme metal",
+            "metal",
+            "osdm",
+            "virginia"
+          ],
+          "releasedAt": "2026-08-07",
+          "artUrl": "https://f4.bcbits.com/img/a2302625795_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        }
+      ]
+    },
+    {
+      "bucket": "hardcore-punk",
+      "messageId": 40,
+      "hasPhoto": true,
+      "candidate": {
+        "itemId": 2325815038,
+        "url": "https://babysfirstpistol.bandcamp.com/album/affirmation-celebration-2",
+        "title": "Affirmation Celebration",
+        "artist": "Baby's First Pistol",
+        "label": null,
+        "tags": [
+          "new wave post-punk revival",
+          "nihilist",
+          "punk",
+          "crank wave",
+          "dance-punk",
+          "disco punk",
+          "garage punk",
+          "hardcore punk",
+          "industrial rock",
+          "new wave",
+          "no wave",
+          "noise punk",
+          "noise rock",
+          "post punk industrial rock",
+          "post-punk",
+          "toronto"
+        ],
+        "releasedAt": "2026-08-21",
+        "artUrl": "https://f4.bcbits.com/img/a0468397088_10.jpg",
+        "alsoCollected": 0,
+        "origin": "fresh"
+      },
+      "matchedTags": [
+        "post-punk",
+        "noise punk",
+        "punk",
+        "hardcore punk",
+        "garage punk",
+        "no wave",
+        "new wave"
+      ],
+      "alternatives": [
+        {
+          "itemId": 2219439395,
+          "url": "https://palbandohio.bandcamp.com/album/adam-up-bob-sawyer-live",
+          "title": "Adam Up / Bob Sawyer (Live)",
+          "artist": "PAL",
+          "label": null,
+          "tags": [
+            "punk",
+            "angular",
+            "art-punk",
+            "art-rock",
+            "egg punk",
+            "post punk",
+            "punk rock",
+            "synth punk",
+            "cleveland"
+          ],
+          "releasedAt": "2026-08-07",
+          "artUrl": "https://f4.bcbits.com/img/a3710792127_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        },
+        {
+          "itemId": 3309334256,
+          "url": "https://beachimpedimentrecords.bandcamp.com/album/guilty",
+          "title": "Guilty",
+          "artist": "Sin Offering",
+          "label": "Beach Impediment Records",
+          "tags": [
+            "goth rock",
+            "punk",
+            "goth",
+            "gothic",
+            "hardcore",
+            "hardcore punk",
+            "post-punk",
+            "spooky",
+            "richmond"
+          ],
+          "releasedAt": "2026-08-07",
+          "artUrl": "https://f4.bcbits.com/img/a3421777746_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        },
+        {
+          "itemId": 3410986747,
+          "url": "https://disorderarecs.bandcamp.com/album/en-vivo-en-san-pedro-squatter-2013",
+          "title": "En Vivo en San Pedro Squatter 2013",
+          "artist": "Clown HC",
+          "label": "Disordera Records",
+          "tags": [
+            "punk",
+            "trash metal",
+            "crust",
+            "d-beat",
+            "grindcore",
+            "hardcore",
+            "punk hardcore",
+            "santa rosa de cabal"
+          ],
+          "releasedAt": "2026-08-07",
+          "artUrl": "https://f4.bcbits.com/img/a0498265775_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        }
+      ]
+    },
+    {
+      "bucket": "hardcore-punk",
+      "messageId": 41,
+      "hasPhoto": true,
+      "candidate": {
+        "itemId": 6391521966513717,
+        "url": "https://bellicoserecords.bandcamp.com/album/5-finger-discount-up-the-east-coast",
+        "title": "5 Finger Discount Up the East Coast",
+        "artist": "COFFEE STAIN",
+        "label": "BELLICOSE RECORDS",
+        "tags": [
+          "duval county",
+          "punk",
+          "coffee",
+          "diy",
+          "egg punk",
+          "experimental",
+          "florida hardcore",
+          "hardcore",
+          "hardcore punk",
+          "jacksonville",
+          "punk rock",
+          "florida"
+        ],
+        "releasedAt": "2024-05-10",
+        "artUrl": "https://f4.bcbits.com/img/a4104059800_10.jpg",
+        "alsoCollected": 0,
+        "origin": "archive",
+        "neighborWeight": 0.348
+      },
+      "matchedTags": [
+        "punk",
+        "hardcore",
+        "hardcore punk",
+        "punk rock",
+        "egg punk",
+        "diy"
+      ],
+      "alternatives": [
+        {
+          "itemId": 6202793497839352,
+          "url": "https://dollhousenyc.bandcamp.com/album/the-first-day-of-spring",
+          "title": "The First Day of Spring",
+          "artist": "DOLLHOUSE",
+          "label": null,
+          "tags": [
+            "nyc punk",
+            "punk",
+            "hardcore punk",
+            "post-punk",
+            "toxic state records",
+            "new york"
+          ],
+          "releasedAt": "2021-03-22",
+          "artUrl": "https://f4.bcbits.com/img/a0572976664_10.jpg",
+          "alsoCollected": 0,
+          "origin": "archive",
+          "neighborWeight": 0.3027
+        },
+        {
+          "itemId": 4260850458622392,
+          "url": "https://generalspeech.bandcamp.com/album/wank-generation",
+          "title": "Wank Generation",
+          "artist": "Ejaculators",
+          "label": "General Speech",
+          "tags": [
+            "hardcore",
+            "japanese hardcore",
+            "post-punk",
+            "punk",
+            "raw punk",
+            "united states"
+          ],
+          "releasedAt": "2024-07-04",
+          "artUrl": "https://f4.bcbits.com/img/a2433002032_10.jpg",
+          "alsoCollected": 0,
+          "origin": "archive",
+          "neighborWeight": 0.3681
+        },
+        {
+          "itemId": 5983413209674882,
+          "url": "https://ragdollrecords.bandcamp.com/album/demo-4",
+          "title": "Demo",
+          "artist": "The Guise",
+          "label": "Ragdoll Records",
+          "tags": [
+            "punk",
+            "hardcore punk",
+            "philly",
+            "post-punk",
+            "united states"
+          ],
+          "releasedAt": "2026-03-27",
+          "artUrl": "https://f4.bcbits.com/img/a0636095421_10.jpg",
+          "alsoCollected": 0,
+          "origin": "archive",
+          "neighborWeight": 0.3424
+        }
+      ]
+    },
+    {
+      "bucket": "black-metal",
+      "messageId": 42,
+      "hasPhoto": true,
+      "candidate": {
+        "itemId": 101244966,
+        "url": "https://diaboluus.bandcamp.com/album/fm-s-side-from-satanic-summons-from-the-abyss-split-w-t-gaalvan",
+        "title": "FM’s Side from „Satanic summons from the abyss“ Split w/t Gaalvan",
+        "artist": "Funeral Moon",
+        "label": "Diaboluus ",
+        "tags": [
+          "atmospheric black metal",
+          "black metal",
+          "black metal ambient",
+          "death metal",
+          "dungeon synth",
+          "metal",
+          "raw black metal",
+          "langenfeld"
+        ],
+        "releasedAt": "2026-08-07",
+        "artUrl": "https://f4.bcbits.com/img/a0186894919_10.jpg",
+        "alsoCollected": 0,
+        "origin": "fresh"
+      },
+      "matchedTags": [
+        "metal",
+        "dungeon synth",
+        "atmospheric black metal",
+        "black metal",
+        "raw black metal",
+        "death metal"
+      ],
+      "alternatives": [
+        {
+          "itemId": 3296467092,
+          "url": "https://crimsonreignrecords.bandcamp.com/album/satanic-summons-from-the-abyss-2",
+          "title": "Satanic Summons from the Abyss",
+          "artist": "Funeral Moon / Gaalvan",
+          "label": "Crimson Reign Records",
+          "tags": [
+            "metal",
+            "primitive black metal",
+            "atmospheric black metal",
+            "black metal",
+            "dark ambient",
+            "dungeon synth",
+            "raw black metal",
+            "munich"
+          ],
+          "releasedAt": "2026-08-07",
+          "artUrl": "https://f4.bcbits.com/img/a0278345766_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        },
+        {
+          "itemId": 3454497409,
+          "url": "https://gentleimpaler.bandcamp.com/album/visions-of-hate",
+          "title": "Visions Of Hate",
+          "artist": "CORNEUS",
+          "label": "Gentle Impaler recordings",
+          "tags": [
+            "metal",
+            "black metal",
+            "dark ambient",
+            "dark dungeon synth",
+            "dungeon synth",
+            "dungeonsynth",
+            "italy"
+          ],
+          "releasedAt": "2026-08-07",
+          "artUrl": "https://f4.bcbits.com/img/a1455921632_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        },
+        {
+          "itemId": 491014537,
+          "url": "https://hermitheresy.bandcamp.com/album/anat-xezasiborb",
+          "title": "Anat Xezasiborb",
+          "artist": "Hermit",
+          "label": null,
+          "tags": [
+            "ambient",
+            "black metal",
+            "church organ",
+            "dark ambient",
+            "electronic",
+            "experimental",
+            "ambient",
+            "black metal",
+            "church organ",
+            "dark ambient",
+            "dungeon synth",
+            "experimental",
+            "experimental electronic",
+            "mashhad"
+          ],
+          "releasedAt": "2026-08-03",
+          "artUrl": "https://f4.bcbits.com/img/a3974756770_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        }
+      ]
     }
   ],
   "posted": [
@@ -1239,6 +1650,14 @@
       "title": "Across the Moor",
       "artist": "Weald Knight",
       "postedAt": "2026-08-05"
+    },
+    {
+      "itemId": 744465062282624,
+      "bucket": "crust",
+      "url": "https://whosereality.bandcamp.com/album/demo-cs",
+      "title": "Demo CS",
+      "artist": "Whose Reality?",
+      "postedAt": "2026-08-08"
     }
   ],
   "feedbackTags": {
@@ -1260,12 +1679,14 @@
     "neocrust": 1,
     "world music": 1,
     "japan": 1,
-    "punk": 1,
+    "punk": 2,
     "d-beat raw punk": 1,
     "hardcore": 1,
     "raw punk": 1,
     "raw shit": 1,
-    "phoenix": 1
+    "phoenix": 1,
+    "punk rock": 1,
+    "vancouver": 1
   },
   "seen": [
     "https://ironlungrecords.bandcamp.com/album/split-lungs-277",
@@ -1297,7 +1718,9 @@
     "https://curaab.bandcamp.com/album/to-the-end-of-suffering",
     "https://alloutattak.bandcamp.com/album/split-w-trigger-damage",
     "https://stuccolabel.bandcamp.com/album/excess-blood",
-    "https://wealdknight.bandcamp.com/album/across-the-moor"
+    "https://wealdknight.bandcamp.com/album/across-the-moor",
+    "https://reaktori.bandcamp.com/album/radiation-sickness",
+    "https://whosereality.bandcamp.com/album/demo-cs"
   ],
-  "lastUpdateId": 910432868
+  "lastUpdateId": 910432874
 }
