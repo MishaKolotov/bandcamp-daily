@@ -69,8 +69,8 @@ function deps(): ApproveDeps & { log: string[] } {
     replaceCard: async (edit) => {
       log.push(`replace:${edit.messageId}:${edit.hasPhoto}:${itemIdOf(edit)}`);
     },
-    closeCard: async (edit) => {
-      log.push(`close:${edit.messageId}:${edit.hasPhoto}:${edit.keyboard.inline_keyboard.length}`);
+    deleteCard: async (messageId) => {
+      log.push(`delete:${messageId}`);
     },
     ack: async (_id, text) => {
       log.push(`ack:${text ?? ''}`);
@@ -104,11 +104,32 @@ test('нажатие «в канал» публикует и записывае�
   assert.equal(s.pending.length, 0);
 });
 
-test('после публикации карточка закрывается без кнопок', async () => {
+test('после публикации карточка сносится из лички', async () => {
   const s = state();
   const d = deps();
   await handleUpdates([callback(5, 'post|crust|1')], s, d, bucketTags);
-  assert.ok(d.log.some((entry) => entry === 'close:100:false:0'));
+  assert.ok(d.log.includes('delete:100'));
+  assert.ok(!d.log.some((entry) => entry.startsWith('replace:')), 'карточка не редактируется, а удаляется');
+});
+
+test('после скипа карточка сносится из лички', async () => {
+  const s = state();
+  const d = deps();
+  await handleUpdates([callback(5, 'skip|crust|1')], s, d, bucketTags);
+  assert.ok(d.log.includes('delete:100'));
+});
+
+test('провал удаления карточки не откатывает уже записанную публикацию', async () => {
+  // Владелец мог снести карточку руками — Telegram ответит ошибкой. Публикация
+  // к этому моменту уже состоялась и записана; косметика не вправе её отменить.
+  const s = state();
+  const d = deps();
+  d.deleteCard = async () => {
+    throw new Error('message to delete not found');
+  };
+  await handleUpdates([callback(5, 'post|crust|1')], s, d, bucketTags);
+  assert.equal(s.posted.length, 1);
+  assert.equal(s.pending.length, 0);
 });
 
 test('скип копит штраф по тегам, но не по опорному тегу своего бакета', async () => {
@@ -138,12 +159,12 @@ test('«другой» подменяет карточку следующим к
   assert.equal(s.pending[0]?.alternatives.length, 0);
 });
 
-test('«другой» без запаса кандидатов закрывает карточку', async () => {
+test('«другой» без запаса кандидатов сносит карточку', async () => {
   const s = state();
   s.pending[0]!.alternatives = [];
   const d = deps();
   await handleUpdates([callback(5, 'next|crust|1')], s, d, bucketTags);
-  assert.ok(d.log.some((entry) => entry.startsWith('close:100')));
+  assert.ok(d.log.includes('delete:100'));
   assert.equal(s.pending.length, 0);
 });
 

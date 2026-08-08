@@ -34,7 +34,7 @@ const PATHS = {
 };
 
 function emptyState(): ApproveState {
-  return { pending: [], posted: [], feedbackTags: {}, seen: [], lastUpdateId: 0 };
+  return { pending: [], posted: [], feedbackTags: {}, seen: [], lastUpdateId: 0, notices: [] };
 }
 
 // Конфигурация — первым делом, до любого файла и любой сети (см.
@@ -84,8 +84,8 @@ const deps: DailyDeps = {
     replaceCard: async (edit) => {
       await editCard(telegram, config.ownerChatId, edit);
     },
-    closeCard: async (edit) => {
-      await editCard(telegram, config.ownerChatId, edit);
+    deleteCard: async (messageId) => {
+      await telegram.deleteMessage({ chat_id: config.ownerChatId, message_id: messageId });
     },
     ack: async (callbackQueryId, text) => {
       await telegram.answerCallbackQuery({ callback_query_id: callbackQueryId, text });
@@ -109,7 +109,8 @@ const deps: DailyDeps = {
       return { messageId: sent.message_id };
     },
     notifyOwner: async (text) => {
-      await telegram.sendMessage({ chat_id: config.ownerChatId, text });
+      const sent = await telegram.sendMessage({ chat_id: config.ownerChatId, text });
+      return { messageId: sent.message_id };
     },
   },
   persistState: (s) => writeJson(PATHS.state, s),

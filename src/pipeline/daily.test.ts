@@ -226,7 +226,7 @@ interface FakeTelegramDeps {
   sendCard: DailyDeps['telegram']['sendCard'];
   postToChannel: DailyDeps['telegram']['postToChannel'];
   replaceCard: DailyDeps['telegram']['replaceCard'];
-  closeCard: DailyDeps['telegram']['closeCard'];
+  deleteCard: DailyDeps['telegram']['deleteCard'];
   ack: DailyDeps['telegram']['ack'];
   notifyOwner: DailyDeps['telegram']['notifyOwner'];
   sentCards: Card[];
@@ -246,9 +246,9 @@ function baseTelegram(updateBatches: TelegramUpdate[][] = []): FakeTelegramDeps 
     },
     postToChannel: async () => {},
     replaceCard: async () => {},
-    closeCard: async () => {},
+    deleteCard: async () => {},
     ack: async () => {},
-    notifyOwner: async () => {},
+    notifyOwner: async () => ({ messageId: 0 }),
   };
 }
 
@@ -417,52 +417,41 @@ test('runDaily: разбор нажатия (post) во время дренаж�
 
 test('runDaily: опрос останавливается раньше срока, как только pending опустел', async () => {
   const profile = fakeProfile();
-  const bucketId = BUCKETS[0]!.id;
-  const candidate: Candidate = {
-    itemId: 1,
-    url: 'https://x.test/album/1',
-    title: 'T',
-    artist: 'A',
-    label: null,
-    tags: [],
-    releasedAt: '2026-08-01',
-    artUrl: null,
-    alsoCollected: 0,
-    origin: 'fresh',
-  };
-  const state: ApproveState = {
-    pending: [{ bucket: bucketId, messageId: 1, hasPhoto: false, candidate, matchedTags: [], alternatives: [] }],
-    posted: [],
-    feedbackTags: {},
-    seen: [],
-    lastUpdateId: 0,
-  };
+  const state = emptyState();
 
   let pollCalls = 0;
-  const skipUpdate: TelegramUpdate = {
-    update_id: 1,
-    callback_query: { id: 'q', data: `skip|${bucketId}|1`, message: { message_id: 1, chat: { id: 1 } } },
-  };
+  // Карточки должны появиться ПО ХОДУ прогона, а не быть посажены в pending
+  // заранее: всё, что осталось в pending с прошлого прогона, подчистка на
+  // шаге 1b сносит до сбора кандидатов (см. `sweepStaleMessages`).
+  const skipAll: TelegramUpdate[] = BUCKETS.map((bucket, index) => ({
+    update_id: index + 1,
+    callback_query: {
+      id: `q${index}`,
+      data: `skip|${bucket.id}|1`,
+      message: { message_id: 1, chat: { id: 1 } },
+    },
+  }));
 
   const deps: DailyDeps = {
-    fresh: { discover: async () => [], bandReleases: async () => [], album: async () => null },
+    fresh: {
+      discover: async (opts) => [
+        { itemId: 1, url: `https://x.test/album/${opts.tag}`, title: opts.tag, artist: 'A', location: null },
+      ],
+      bandReleases: async () => [],
+      album: async (url) => album({ tags: [url.split('/').pop()!] }),
+    },
     archive: { album: async () => null },
     fetchOwnedUrls: async () => [],
     fetchFollowSubdomains: async () => [],
     telegram: {
-      // Первый вызов (дренаж backlog) — пусто, второй (опрос) — нажатие,
-      // опустошающее pending; счётчик доказывает, что опрос не продолжает
+      ...baseTelegram(),
+      // Первый вызов (дренаж backlog) — пусто, второй (опрос) — нажатия,
+      // опустошающие pending; счётчик доказывает, что опрос не продолжает
       // молотить getUpdates после того, как разбирать больше нечего.
       getUpdates: async () => {
         pollCalls += 1;
-        return pollCalls === 2 ? [skipUpdate] : [];
+        return pollCalls === 2 ? skipAll : [];
       },
-      sendCard: async () => ({ messageId: 1 }),
-      postToChannel: async () => {},
-      replaceCard: async () => {},
-      closeCard: async () => {},
-      ack: async () => {},
-      notifyOwner: async () => {},
     },
     persistState: async () => {},
     // Часы не двигаются — "до" всегда далеко в будущем относительно
@@ -513,9 +502,9 @@ test('runDaily: listenMinutes 0 — опрос не запускается во�
       sendCard: async () => ({ messageId: 1 }),
       postToChannel: async () => {},
       replaceCard: async () => {},
-      closeCard: async () => {},
+      deleteCard: async () => {},
       ack: async () => {},
-      notifyOwner: async () => {},
+      notifyOwner: async () => ({ messageId: 0 }),
     },
     persistState: async () => {},
     now: () => new Date('2026-08-03'),
@@ -526,7 +515,96 @@ test('runDaily: listenMinutes 0 — опрос не запускается во�
   // Один вызов — дренаж backlog на шаге 1. Цикл опроса на шаге 3 не должен
   // был вызвать getUpdates ни разу: until уже в прошлом при listenMinutes=0.
   assert.equal(getUpdatesCalls, 1);
-  assert.equal(state.pending.length, 1, 'карточка остаётся висеть — её никто не тронул');
+  // Посаженная в pending карточка — хвост прошлого прогона; подчистка на
+  // шаге 1b сносит её до сбора кандидатов, а не оставляет висеть.
+  assert.equal(state.pending.length, 0);
+});
+
+test('runDaily: подчистка сносит вчерашние карточки и уведомления, помечая релизы показанными', async () => {
+  const profile = fakeProfile();
+  const candidate: Candidate = {
+    itemId: 1,
+    url: 'https://x.test/album/leftover',
+    title: 'T',
+    artist: 'A',
+    label: null,
+    tags: [],
+    releasedAt: '2026-08-01',
+    artUrl: null,
+    alsoCollected: 0,
+    origin: 'fresh',
+  };
+  const state: ApproveState = {
+    pending: [
+      { bucket: BUCKETS[0]!.id, messageId: 11, hasPhoto: false, candidate, matchedTags: [], alternatives: [] },
+    ],
+    posted: [],
+    feedbackTags: {},
+    seen: [],
+    lastUpdateId: 0,
+    notices: [12, 13],
+  };
+
+  const deleted: number[] = [];
+  const deps: DailyDeps = {
+    fresh: { discover: async () => [], bandReleases: async () => [], album: async () => null },
+    archive: { album: async () => null },
+    fetchOwnedUrls: async () => [],
+    fetchFollowSubdomains: async () => [],
+    telegram: {
+      ...baseTelegram(),
+      deleteCard: async (messageId) => {
+        deleted.push(messageId);
+      },
+    },
+    persistState: async () => {},
+    now: () => new Date('2026-08-03'),
+  };
+
+  await runDaily(profile, [], state, deps, baseOptions);
+
+  assert.deepEqual(deleted, [11, 12, 13], 'сносятся и карточки, и служебные уведомления');
+  assert.equal(state.pending.length, 0);
+  // notices не пуст: бакеты сегодня пустые, и прогон уже записал туда СВОИ
+  // уведомления — под снос завтрашней подчисткой. Важно, что вчерашних там
+  // больше нет, а не что список пуст.
+  assert.ok(!state.notices?.includes(12) && !state.notices?.includes(13), 'вчерашние уведомления забыты');
+  assert.ok(
+    state.seen.includes(candidate.url),
+    'непрожатая карточка считается показанной — иначе тот же релиз придёт завтра снова',
+  );
+});
+
+test('runDaily: провал удаления одного хвоста не мешает снести остальные', async () => {
+  const profile = fakeProfile();
+  const state = emptyState();
+  state.notices = [21, 22, 23];
+
+  const deleted: number[] = [];
+  const deps: DailyDeps = {
+    fresh: { discover: async () => [], bandReleases: async () => [], album: async () => null },
+    archive: { album: async () => null },
+    fetchOwnedUrls: async () => [],
+    fetchFollowSubdomains: async () => [],
+    telegram: {
+      ...baseTelegram(),
+      deleteCard: async (messageId) => {
+        // Владелец мог снести сообщение руками — Telegram ответит ошибкой.
+        if (messageId === 22) throw new Error('message to delete not found');
+        deleted.push(messageId);
+      },
+    },
+    persistState: async () => {},
+    now: () => new Date('2026-08-03'),
+  };
+
+  await runDaily(profile, [], state, deps, baseOptions);
+
+  assert.deepEqual(deleted, [21, 23]);
+  assert.ok(
+    ![21, 22, 23].some((id) => state.notices?.includes(id)),
+    'вчерашние хвосты забыты все разом, включая тот, что не удалился — повторять снос нечего',
+  );
 });
 
 test('runDaily: пустой бакет (без свежака и архива) шлёт notifyOwner ровно один раз, а не за каждый пул', async () => {
@@ -549,6 +627,7 @@ test('runDaily: пустой бакет (без свежака и архива) 
       ...baseTelegram(),
       notifyOwner: async (text) => {
         notes.push(text);
+        return { messageId: 900 + notes.length };
       },
     },
     persistState: async () => {},

@@ -9,6 +9,7 @@ import { selectForBucket, type BucketSelection } from './select.ts';
 import { buildCard, type Card } from '../telegram/card.ts';
 import {
   handleUpdates,
+  rememberSeen,
   type ApproveDeps,
   type ApproveState,
   type CardEdit,
@@ -140,10 +141,10 @@ export interface EditableTelegram {
  * отправлена изначально (`edit.hasPhoto`), а НЕ по тому, есть ли обложка у
  * кандидата, который в карточке показан сейчас: Telegram не даёт превратить
  * фото-сообщение в текстовое при редактировании и наоборот (см. комментарий
- * у `PendingCard.hasPhoto` в `../telegram/approve.ts`). Используется и для
- * `replaceCard` (подмена кандидата, клавиатура жива), и для `closeCard`
- * (финализация, клавиатура снята) — `approve.ts` уже собирает нужный вариант
- * `CardEdit` под оба случая, этой функции всё равно, зовут её откуда.
+ * у `PendingCard.hasPhoto` в `../telegram/approve.ts`). Нужна ровно одному
+ * сценарию — `replaceCard`, подмене кандидата кнопкой «другой», где карточка
+ * остаётся жить с активными кнопками. Разобранные карточки не редактируются,
+ * а удаляются (`deleteCard`).
  */
 export function editCard(
   telegram: EditableTelegram,
@@ -217,8 +218,13 @@ export interface DailyTelegramDeps extends ApproveDeps {
   getUpdates: (offset: number) => Promise<TelegramUpdate[]>;
   /** Отправляет новую карточку владельцу (sendPhoto или sendMessage — решает вызывающий код по `card.photo`). */
   sendCard: (card: Card) => Promise<{ messageId: number }>;
-  /** Служебное сообщение владельцу вне карточек — например, "у бакета сегодня пусто". */
-  notifyOwner: (text: string) => Promise<void>;
+  /**
+   * Служебное сообщение владельцу вне карточек — например, "у бакета сегодня
+   * пусто". Возвращает message_id, потому что такие сообщения тоже подлежат
+   * подчистке следующим прогоном (см. `sweepStaleMessages`): иначе личка
+   * зарастала бы уже не карточками, так уведомлениями.
+   */
+  notifyOwner: (text: string) => Promise<{ messageId: number }>;
 }
 
 export interface DailyDeps {
@@ -249,15 +255,56 @@ export interface DailyOptions {
 }
 
 /**
- * Дневной прогон: разобрать вчерашние нажатия, собрать сегодняшних
- * кандидатов по четырём бакетам, отправить владельцу карточки, подождать
- * реакции и выйти, оставив состояние на диске.
+ * Сносит из лички всё, что осталось от прошлых прогонов: карточки, на которые
+ * владелец так и не нажал за отведённые часы, и служебные уведомления. Смысл —
+ * в личке к моменту отправки сегодняшней пачки не должно быть ничего, кроме
+ * того, что ещё надо послушать.
+ *
+ * Момент вызова не произволен: строго ПОСЛЕ дренажа вчерашних нажатий (иначе
+ * снесли бы карточку, нажатие по которой ещё лежит в очереди `getUpdates`, и
+ * потеряли бы публикацию) и ДО сбора сегодняшних кандидатов.
+ *
+ * Снесённая карточка помечается показанной (`rememberSeen`) — владелец её
+ * видел и не отреагировал; предлагать завтра ровно то, что он вчера
+ * проигнорировал, значит спорить с ним карточками. Это ровно тот смысл, что
+ * уже заложен в `ApproveState.seen` («показанные в любом статусе»).
+ *
+ * Неудача удаления не фатальна: сообщение мог снести сам владелец руками, а
+ * состояние к этому моменту уже согласовано. Ошибка логируется, прогон идёт
+ * дальше.
+ */
+async function sweepStaleMessages(state: ApproveState, deps: DailyDeps): Promise<void> {
+  const staleCards = state.pending.map((card) => ({ messageId: card.messageId, url: card.candidate.url }));
+  const staleNotices = (state.notices ?? []).map((messageId) => ({ messageId, url: null }));
+  const stale = [...staleCards, ...staleNotices];
+  if (stale.length === 0) return;
+
+  for (const { messageId, url } of stale) {
+    if (url) rememberSeen(state, url);
+    try {
+      await deps.telegram.deleteCard(messageId);
+    } catch (error) {
+      console.error(`daily: не удалось снести сообщение ${messageId} из лички`, error);
+    }
+  }
+
+  state.pending = [];
+  state.notices = [];
+  await deps.persistState(state);
+}
+
+/**
+ * Дневной прогон: разобрать вчерашние нажатия, вычистить личку, собрать
+ * сегодняшних кандидатов по четырём бакетам, отправить владельцу карточки,
+ * подождать реакции и выйти, оставив состояние на диске.
  *
  * Порядок шагов — не произвольный:
  * 1. Дренаж вчерашнего backlog идёт ПЕРВЫМ и целиком, до единого сетевого
  *    похода за кандидатами: то, что владелец уже разобрал руками (posted/
  *    seen), обязано быть учтено в exclude-множестве, иначе сегодняшний
  *    отбор рискует предложить то же самое повторно под новым messageId.
+ * 1b. Подчистка хвостов (`sweepStaleMessages`) — сразу после дренажа, чтобы
+ *    сегодняшняя пачка легла в пустую личку.
  * 2. Сбор кандидатов — подписки обходятся ОДИН раз на весь прогон (см.
  *    "Решения, принятые по ходу реализации", п.2), архивный пул тоже
  *    строится один раз с запасом и делится между бакетами скорингом
@@ -284,7 +331,7 @@ export async function runDaily(
   const approveDeps: ApproveDeps = {
     postToChannel: deps.telegram.postToChannel,
     replaceCard: deps.telegram.replaceCard,
-    closeCard: deps.telegram.closeCard,
+    deleteCard: deps.telegram.deleteCard,
     ack: deps.telegram.ack,
   };
 
@@ -307,15 +354,15 @@ export async function runDaily(
     backlog = await deps.telegram.getUpdates(state.lastUpdateId + 1);
   }
 
+  // 1b. Снести всё, что осталось в личке с прошлых прогонов. После этого
+  // state.pending пуст, а URL снесённых карточек лежат в state.seen — то
+  // есть попадут в exclude-множество ниже наравне с разобранным вручную.
+  await sweepStaleMessages(state, deps);
+
   // 2. Собрать сегодняшних кандидатов.
   const now = deps.now();
   const ownedUrls = await deps.fetchOwnedUrls();
-  // Карточки, зависшие в pending с прошлого прогона (владелец ещё не
-  // ответил), исключаются наравне с уже показанным (state.seen) и уже
-  // имеющимся (ownedUrls) — иначе тот же релиз мог бы получить второй
-  // pending-дубль под другим messageId, пока первый ждёт ответа.
-  const pendingUrls = state.pending.map((card) => card.candidate.url);
-  const excluded = new Set([...state.seen, ...pendingUrls, ...ownedUrls]);
+  const excluded = new Set([...state.seen, ...ownedUrls]);
 
   // Подписки — один сетевой обход на весь прогон (см. п.2 решений), а не
   // по разу на бакет: freshCandidates сама не кэширует и не помнит
@@ -412,7 +459,12 @@ export async function runDaily(
       const note = bucketEmptyMessage(bucket, selection);
       if (note) {
         try {
-          await deps.telegram.notifyOwner(note);
+          const sent = await deps.telegram.notifyOwner(note);
+          // message_id уведомления запоминаем ровно затем, чтобы завтрашняя
+          // подчистка снесла его вместе с карточками: без этого личка
+          // зарастала бы уведомлениями вместо карточек.
+          state.notices = [...(state.notices ?? []), sent.messageId];
+          await deps.persistState(state);
         } catch (error) {
           // Уведомление необязательное — состояние уже корректно без него.
           console.error('daily: не удалось отправить уведомление о пустом бакете', error);

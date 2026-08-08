@@ -51,6 +51,18 @@ export interface ApproveState {
    */
   seen: string[];
   lastUpdateId: number;
+  /**
+   * message_id служебных сообщений бота в личке владельца — тех, что не
+   * карточки («у бакета сегодня пусто» и т.п.). Нужны ровно затем, чтобы
+   * следующий прогон снёс их вместе с недоразобранными карточками (см.
+   * подчистку хвостов в `../pipeline/daily.ts`): у карточек message_id
+   * лежит в `pending`, а у этих сообщений его больше негде взять.
+   *
+   * Поле появилось позже остальных, поэтому читающий код обязан быть готов
+   * к его отсутствию в старом data/state.json (`?? []`) — `readJson` форму
+   * файла не валидирует.
+   */
+  notices?: number[];
 }
 
 /** Итоговое содержимое отредактированного сообщения — то, что уходит в editMessageCaption/editMessageText. */
@@ -71,15 +83,22 @@ export interface ApproveDeps {
   postToChannel: (bucket: BucketId, text: string) => Promise<void>;
   /** Подменяет содержимое карточки владельца на нового кандидата — кнопки остаются активными. */
   replaceCard: (edit: CardEdit) => Promise<void>;
-  /** Финализирует карточку владельца (публикация/скип/кандидаты кончились) — кнопки снимаются. */
-  closeCard: (edit: CardEdit) => Promise<void>;
+  /**
+   * Сносит карточку из лички владельца — вызывается, когда с ней покончено
+   * (опубликовано / скип / кандидаты кончились). Раньше карточка на этом
+   * месте дожёвывалась в «закрытую» (приписка + снятая клавиатура) и
+   * оставалась в чате навсегда; личка зарастала разобранными карточками, а
+   * найти в ней то, что ещё надо послушать, становилось нельзя. Теперь в
+   * чате остаются только живые карточки.
+   *
+   * Обратной связью служит всплывашка `ack` — она несёт ровно тот же текст
+   * («опубликовано», «скип»), что раньше дописывался в подпись, и исчезает
+   * сама.
+   */
+  deleteCard: (messageId: number) => Promise<void>;
   ack: (callbackQueryId: string, text?: string) => Promise<void>;
 }
 
-/** Лимит Telegram на подпись/текст сообщения — тот же, что и в card.ts. */
-const CAPTION_LIMIT = 1024;
-
-const CLEARED_KEYBOARD: InlineKeyboard = { inline_keyboard: [] };
 const EMPTY_TAG_SET: ReadonlySet<string> = new Set();
 
 /**
@@ -95,37 +114,25 @@ const SEED_TAGS_BY_BUCKET = new Map<BucketId, ReadonlySet<string>>(
   BUCKETS.map((bucket) => [bucket.id, new Set(bucket.seedTags.map(canonicalizeTag))]),
 );
 
-function remember(state: ApproveState, url: string): void {
+/**
+ * Помечает URL как показанный владельцу — в любом статусе (опубликован,
+ * скипнут, заменён кнопкой «другой», просто провисел сутки без ответа и был
+ * снесён подчисткой). Экспортируется ради этого последнего случая: подчистку
+ * хвостов делает дневной прогон (`../pipeline/daily.ts`), а решать, что
+ * показанное считается показанным, должен один модуль — этот.
+ */
+export function rememberSeen(state: ApproveState, url: string): void {
   if (!state.seen.includes(url)) state.seen.push(url);
 }
 
-/**
- * Собирает `CardEdit` из текущего содержимого карточки. `note`, если задан,
- * дописывается под обычной подписью и снимает клавиатуру — это финализация
- * (опубликовано/скип/кандидаты кончились). Без `note` клавиатура остаётся
- * живой — карточка просто подменяет кандидата (`next`).
- *
- * Подпись урезается до `CAPTION_LIMIT` простым `slice` уже ПОСЛЕ того, как
- * `buildCard` аккуратно (с учётом суррогатных пар и HTML-сущностей, см.
- * `card.ts`) подогнала её под лимит сама по себе. Разрезать по живому ещё
- * раз здесь без такой же аккуратности в принципе может отрезать сущность
- * или суррогатную пару пополам — но это осознанно допустимый риск: если
- * `note` вытолкнула итог за границу и Telegram отклонит именно этот вызов
- * `editMessage*`, `closeCard` в `handleUpdates` вызывается best-effort (см.
- * `safely`) — состояние (posted/pending) к этому моменту уже записано
- * корректно, косметическая правка подписи не является источником истины.
- * Такой случай в принципе редкий: он требует, чтобы исходная подпись без
- * `note` уже стояла впритык к лимиту (адверсариальные заголовки в 900
- * символов и т.п.), а не обычного релиза с Bandcamp.
- */
-function cardEditFor(card: PendingCard, note?: string): CardEdit {
+/** Собирает `CardEdit` из текущего содержимого карточки — с живой клавиатурой, для подмены кандидата кнопкой «другой». */
+function cardEditFor(card: PendingCard): CardEdit {
   const built = buildCard(card.candidate, card.bucket, card.matchedTags);
-  const caption = note ? `${built.caption}\n\n${note}`.slice(0, CAPTION_LIMIT) : built.caption;
   return {
     messageId: card.messageId,
     hasPhoto: card.hasPhoto,
-    caption,
-    keyboard: note ? CLEARED_KEYBOARD : built.keyboard,
+    caption: built.caption,
+    keyboard: built.keyboard,
   };
 }
 
@@ -175,9 +182,9 @@ async function handlePost(
 ): Promise<void> {
   const alreadyPosted = state.posted.some((entry) => entry.url === card.candidate.url);
   if (alreadyPosted) {
-    remember(state, card.candidate.url);
+    rememberSeen(state, card.candidate.url);
     state.pending.splice(index, 1);
-    await safely(() => deps.closeCard(cardEditFor(card, '📢 уже было опубликовано ранее')));
+    await safely(() => deps.deleteCard(card.messageId));
     await safeAck(deps, callbackQueryId, 'уже опубликовано ранее');
     return;
   }
@@ -207,9 +214,9 @@ async function handlePost(
     postedAt: now.toISOString().slice(0, 10),
   });
   state.pending.splice(index, 1);
-  remember(state, card.candidate.url);
+  rememberSeen(state, card.candidate.url);
 
-  await safely(() => deps.closeCard(cardEditFor(card, '📢 опубликовано')));
+  await safely(() => deps.deleteCard(card.messageId));
   await safeAck(deps, callbackQueryId, 'опубликовано');
 }
 
@@ -225,9 +232,9 @@ async function handleSkip(
     if (seedTags.has(canonicalizeTag(tag))) continue;
     state.feedbackTags[tag] = (state.feedbackTags[tag] ?? 0) + 1;
   }
-  remember(state, card.candidate.url);
+  rememberSeen(state, card.candidate.url);
   state.pending.splice(index, 1);
-  await safely(() => deps.closeCard(cardEditFor(card, '⏭ скип')));
+  await safely(() => deps.deleteCard(card.messageId));
   await safeAck(deps, callbackQueryId, 'скип');
 }
 
@@ -238,11 +245,11 @@ async function handleNext(
   index: number,
   callbackQueryId: string,
 ): Promise<void> {
-  remember(state, card.candidate.url);
+  rememberSeen(state, card.candidate.url);
   const replacement = card.alternatives[0];
   if (!replacement) {
     state.pending.splice(index, 1);
-    await safely(() => deps.closeCard(cardEditFor(card, 'кандидаты кончились')));
+    await safely(() => deps.deleteCard(card.messageId));
     await safeAck(deps, callbackQueryId, 'кандидаты кончились');
     return;
   }
