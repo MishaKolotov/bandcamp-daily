@@ -7,10 +7,10 @@
  * так же, как `bin/build-profile.ts` и `bin/neighbors.ts` собирают Http и
  * читают/пишут файлы сами, не пряча это в src/.
  *
- * Требует пять переменных окружения — токен бота, чат владельца и по
- * одному chat_id на каждый из четырёх каналов (см. `loadConfig` в
- * `../src/pipeline/daily.ts`); их пока не с чем сверить — бот-токен ещё не
- * заведён (Task 22), так что живой прогон этого файла пока не запускался.
+ * Требует две переменные окружения — токен бота и чат владельца (см.
+ * `loadConfig` в `../src/pipeline/daily.ts`); их пока не с чем сверить —
+ * бот-токен ещё не заведён (Task 22), так что живой прогон этого файла пока
+ * не запускался.
  */
 import { Http } from '../src/lib/http.ts';
 import { readJson, writeJson } from '../src/lib/state.ts';
@@ -76,11 +76,6 @@ const deps: DailyDeps = {
     return follows.map((band) => band.subdomain).filter(Boolean);
   },
   telegram: {
-    postToChannel: async (bucket, text) => {
-      const chatId = config.channelIdByBucket.get(bucket);
-      if (!chatId) throw new Error(`нет chat_id канала для бакета ${bucket}`);
-      await telegram.sendMessage({ chat_id: chatId, text, parse_mode: 'HTML' });
-    },
     replaceCard: async (edit) => {
       await editCard(telegram, config.ownerChatId, edit);
     },

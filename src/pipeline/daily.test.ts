@@ -157,36 +157,24 @@ test('editCard: карточка, отправленная как текст, р
 // loadConfig
 // ---------------------------------------------------------------------------
 
-/** Полный набор переменных окружения — по BUCKETS, а не по захардкоженным именам. */
-function fullEnv(): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { TELEGRAM_BOT_TOKEN: 'tok', OWNER_CHAT_ID: '123' };
-  for (const bucket of BUCKETS) env[bucket.channelEnv] = `chat-${bucket.id}`;
-  return env;
-}
-
-test('loadConfig: с полным окружением строит по записи канала на каждый бакет из BUCKETS', () => {
-  const config = loadConfig(fullEnv());
-  assert.equal(config.botToken, 'tok');
-  assert.equal(config.ownerChatId, '123');
-  // Не сверяем с захардкоженным списком имён бакетов — сверяем с самим BUCKETS,
-  // чтобы тест не устарел молча, если список бакетов снова расширится.
-  for (const bucket of BUCKETS) {
-    assert.equal(config.channelIdByBucket.get(bucket.id), `chat-${bucket.id}`);
-  }
-  assert.equal(config.channelIdByBucket.size, BUCKETS.length);
-});
-
 test('loadConfig: все недостающие переменные собираются в одну ошибку, а не бросаются по одной', () => {
-  const env = fullEnv();
-  delete env.TELEGRAM_BOT_TOKEN;
-  delete env[BUCKETS[0]!.channelEnv];
+  // Обе переменные отсутствуют разом — ошибка обязана назвать обе, а не
+  // только первую по порядку: иначе владелец узнавал бы о недостающих
+  // переменных по одной за прогон, завёл токен, перезапустил, узнал про
+  // следующую.
   assert.throws(
-    () => loadConfig(env),
+    () => loadConfig({}),
     (error: unknown) =>
       error instanceof Error &&
       error.message.includes('TELEGRAM_BOT_TOKEN') &&
-      error.message.includes(BUCKETS[0]!.channelEnv),
+      error.message.includes('OWNER_CHAT_ID'),
   );
+});
+
+test('loadConfig требует только токен и чат владельца', () => {
+  const config = loadConfig({ TELEGRAM_BOT_TOKEN: 't', OWNER_CHAT_ID: '42' });
+  assert.equal(config.botToken, 't');
+  assert.equal(config.ownerChatId, '42');
 });
 
 // ---------------------------------------------------------------------------

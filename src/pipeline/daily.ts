@@ -112,7 +112,7 @@ export function bucketEmptyMessage(bucket: BucketDef, selection: BucketSelection
       ? `${label}: сегодня нечего было предложить`
       : `${label}: кандидаты были, но профиль отбраковал всё`;
   return [
-    `${bucket.channelTitle}: сегодня без карточек.`,
+    `${bucket.title}: сегодня без карточек.`,
     describe('свежак', selection.fresh),
     describe('архив', selection.archive),
   ].join('\n');
@@ -169,13 +169,8 @@ export function editCard(
 }
 
 /**
- * Пять переменных окружения, без которых прогон не имеет смысла: токен
- * бота, чат владельца и по одному chat_id канала на каждый бакет из
- * `BUCKETS` (см. `../profile/buckets.ts` — сейчас их четыре, включая
- * `black-metal`/`BLACK_METAL_CHANNEL_ID`, но список читается оттуда, а не
- * дублируется здесь именами). Список собирается generично по `BUCKETS`
- * именно затем, чтобы добавление пятого бакета само по себе расширило
- * список нужных переменных, без правки этой функции.
+ * Две переменные окружения, без которых прогон не имеет смысла: токен бота
+ * и чат владельца.
  *
  * Все отсутствующие переменные собираются в ОДНО сообщение об ошибке, а не
  * бросаются по одной: без этого владелец узнавал бы о недостающих
@@ -189,7 +184,6 @@ export function editCard(
 export interface DailyConfig {
   botToken: string;
   ownerChatId: string;
-  channelIdByBucket: Map<BucketId, string>;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): DailyConfig {
@@ -202,15 +196,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): DailyConfig {
 
   const botToken = read('TELEGRAM_BOT_TOKEN');
   const ownerChatId = read('OWNER_CHAT_ID');
-  const channelIdByBucket = new Map<BucketId, string>();
-  for (const bucket of BUCKETS) {
-    channelIdByBucket.set(bucket.id, read(bucket.channelEnv));
-  }
 
   if (missing.length > 0) {
     throw new Error(`не заданы переменные окружения: ${missing.join(', ')}`);
   }
-  return { botToken, ownerChatId, channelIdByBucket };
+  return { botToken, ownerChatId };
 }
 
 /** Всё, что дневному прогону нужно от сети — Bandcamp и Telegram, — уже за интерфейсом, как и в остальном пайплайне. */

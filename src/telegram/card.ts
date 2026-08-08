@@ -38,8 +38,8 @@ function formatDate(iso: string | null): string {
   return `${day}.${month}.${year}`;
 }
 
-function channelTitleOf(bucket: BucketId): string | undefined {
-  return BUCKETS.find((b) => b.id === bucket)?.channelTitle;
+function bucketTitleOf(bucket: BucketId): string | undefined {
+  return BUCKETS.find((b) => b.id === bucket)?.title;
 }
 
 /**
@@ -169,11 +169,12 @@ interface BodyOptions {
   /** Объяснение ("свежее от ..." / "откопано у соседей..."), почему кандидат вообще показан. */
   includeExplanation: boolean;
   /**
-   * Название бакета, к которому относится кандидат: карточки всех четырёх
-   * бакетов приходят в один и тот же личный чат вперемешку, и без подписи
-   * не всегда понятно, из какого бакета конкретный кандидат.
+   * Человекочитаемое имя жанра. Владелец получает один альбом за заход из
+   * любого из четырёх бакетов, и без подписи не видно, из какого именно —
+   * а это ровно тот контекст, по которому он решает, слушать сейчас или
+   * позже.
    */
-  channelTitle?: string;
+  bucketTitle?: string;
   /**
    * Строка "лейбл: ...". `score()` в `../profile/score.ts` сам взвешивает
    * репутацию лейбла как часть скоринга (`labelBonus`) — тот же сигнал,
@@ -201,10 +202,10 @@ interface BodyOptions {
  */
 function body(candidate: Candidate, options: BodyOptions): string {
   const escapedUrl = escapeHtml(candidate.url);
-  const channelLine = options.channelTitle ? escapeHtml(options.channelTitle) : '';
-  const channelReserve = channelLine ? channelLine.length + 1 : 0;
+  const titleLine = options.bucketTitle ? escapeHtml(options.bucketTitle) : '';
+  const titleReserve = titleLine ? titleLine.length + 1 : 0;
 
-  const headerBudget = CAPTION_LIMIT - escapedUrl.length - 1 - channelReserve;
+  const headerBudget = CAPTION_LIMIT - escapedUrl.length - 1 - titleReserve;
   const header = buildHeader(candidate.artist, candidate.title, headerBudget);
 
   const tagsLine = candidate.tags.length > 0 ? escapeHtml(candidate.tags.slice(0, 8).join(' · ')) : '';
@@ -215,8 +216,8 @@ function body(candidate: Candidate, options: BodyOptions): string {
     options.includeLabel && candidate.label ? `лейбл: ${escapeHtml(candidate.label)}` : '',
   ].filter(Boolean);
 
-  const lines = channelLine ? [channelLine, header] : [header];
-  let used = channelReserve + header.length + 1 + escapedUrl.length;
+  const lines = titleLine ? [titleLine, header] : [header];
+  let used = titleReserve + header.length + 1 + escapedUrl.length;
   for (const line of optional) {
     if (used + line.length + 1 <= CAPTION_LIMIT) {
       lines.push(line);
@@ -240,7 +241,7 @@ export function buildCard(candidate: Candidate, bucket: BucketId, matchedTags: s
     photo: candidate.artUrl,
     caption: body(candidate, {
       includeExplanation: true,
-      channelTitle: channelTitleOf(bucket),
+      bucketTitle: bucketTitleOf(bucket),
       includeLabel: true,
     }),
     keyboard: {

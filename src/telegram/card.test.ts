@@ -63,12 +63,12 @@ test('архивный кандидат объясняется соседями,
   assert.match(archive.caption, /сосед/i);
 });
 
-test('карточка владельца показывает название канала — иначе не понять, куда уйдёт кнопка «В канал» среди четырёх', () => {
+test('карточка владельца показывает название жанра — иначе не понять, из какого бакета пришёл кандидат среди четырёх', () => {
   for (const bucket of BUCKETS) {
     const card = buildCard(candidate, bucket.id, []);
     assert.ok(
-      card.caption.includes(bucket.channelTitle),
-      `не нашли "${bucket.channelTitle}" в карточке владельца для бакета ${bucket.id}`,
+      card.caption.includes(bucket.title),
+      `не нашли "${bucket.title}" в карточке владельца для бакета ${bucket.id}`,
     );
   }
 });
@@ -154,14 +154,14 @@ test('когда бюджета хватает ровно на артиста, �
   // Ссылка подобрана так, что на заголовок остаётся ровно столько символов,
   // сколько занимает "<b>Band &amp; Co</b> — " — граничный случай между
   // «title обрезается» и «даже артисту не хватает места». Бюджет заголовка
-  // считается уже за вычетом строки с названием канала, которую buildCard
-  // теперь всегда добавляет владельцу — длину канала берём из BUCKETS, а не
-  // угадываем числом.
-  const crustChannelTitle = BUCKETS.find((b) => b.id === 'crust')!.channelTitle;
-  const channelReserve = escapeForTest(crustChannelTitle).length + 1;
+  // считается уже за вычетом строки с названием жанра, которую buildCard
+  // теперь всегда добавляет владельцу — длину названия берём из BUCKETS, а
+  // не угадываем числом.
+  const crustBucketTitle = BUCKETS.find((b) => b.id === 'crust')!.title;
+  const titleReserve = escapeForTest(crustBucketTitle).length + 1;
   const prefix = `<b>${escapeForTest(candidate.artist)}</b> — `;
   const domain = 'https://x.test/';
-  const urlLen = CAPTION_LIMIT - 1 - channelReserve - prefix.length;
+  const urlLen = CAPTION_LIMIT - 1 - titleReserve - prefix.length;
   const url = `${domain}${'a'.repeat(Math.max(urlLen - domain.length, 0))}`;
   assert.equal(url.length, urlLen);
   const c: Candidate = { ...candidate, url, title: 'Some Title' };
