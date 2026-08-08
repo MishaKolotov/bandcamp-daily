@@ -2,8 +2,7 @@ import type { BucketId, Candidate } from '../bandcamp/types.ts';
 import { canonicalizeTag } from '../lib/tags.ts';
 import { BUCKETS } from '../profile/buckets.ts';
 import type { InlineKeyboard, TelegramUpdate } from './api.ts';
-import { TelegramApiError } from './api.ts';
-import { buildCard, buildChannelPost, parseCallback } from './card.ts';
+import { buildCard, parseCallback } from './card.ts';
 
 export interface PendingCard {
   bucket: BucketId;
@@ -24,45 +23,23 @@ export interface PendingCard {
   alternatives: Candidate[];
 }
 
-export interface PostedEntry {
-  itemId: number;
-  bucket: BucketId;
-  url: string;
-  title: string;
-  artist: string;
-  postedAt: string;
-}
-
 export interface ApproveState {
   pending: PendingCard[];
-  posted: PostedEntry[];
   /** Тег (как он лежит в Candidate.tags — нижний регистр, сырое написание) → сколько раз владелец скипнул релиз с этим тегом. */
   feedbackTags: Record<string, number>;
   /**
-   * URL релизов, уже показанных владельцу (в любом статусе — опубликован,
-   * скипнут, заменён). Ключ — URL, а НЕ itemId (см. "Решения, принятые по
-   * ходу реализации" в плане, п.1): релиз, найденный через дискографию
-   * подписки или пришедший из архивного пула соседей, несёт вместо
-   * настоящего item_id детерминированный хеш URL (см. `hashUrl` в
-   * `src/lib/hash.ts`); тот же самый релиз, увиденный позже через Discover
-   * или в коллекции другого соседа, придёт с другим, настоящим числовым id —
-   * по itemId это были бы два разных релиза, по URL один и тот же. itemId
-   * остаётся только компактной ручкой для callback_data.
+   * URL релизов, уже показанных владельцу (в любом статусе — скипнут,
+   * заменён кнопкой «другой», просто провисел без ответа). Ключ — URL, а НЕ
+   * itemId (см. "Решения, принятые по ходу реализации" в плане, п.1): релиз,
+   * найденный через дискографию подписки или пришедший из архивного пула
+   * соседей, несёт вместо настоящего item_id детерминированный хеш URL (см.
+   * `hashUrl` в `src/lib/hash.ts`); тот же самый релиз, увиденный позже через
+   * Discover или в коллекции другого соседа, придёт с другим, настоящим
+   * числовым id — по itemId это были бы два разных релиза, по URL один и тот
+   * же. itemId остаётся только компактной ручкой для callback_data.
    */
   seen: string[];
   lastUpdateId: number;
-  /**
-   * message_id служебных сообщений бота в личке владельца — тех, что не
-   * карточки («у бакета сегодня пусто» и т.п.). Нужны ровно затем, чтобы
-   * следующий прогон снёс их вместе с недоразобранными карточками (см.
-   * подчистку хвостов в `../pipeline/daily.ts`): у карточек message_id
-   * лежит в `pending`, а у этих сообщений его больше негде взять.
-   *
-   * Поле появилось позже остальных, поэтому читающий код обязан быть готов
-   * к его отсутствию в старом data/state.json (`?? []`) — `readJson` форму
-   * файла не валидирует.
-   */
-  notices?: number[];
 }
 
 /** Итоговое содержимое отредактированного сообщения — то, что уходит в editMessageCaption/editMessageText. */
@@ -74,26 +51,18 @@ export interface CardEdit {
 }
 
 export interface ApproveDeps {
-  /**
-   * Публикация в канал бакета. Может бросить `TelegramApiError` (см.
-   * `src/telegram/api.ts`) — обработка ошибки (recoverable vs
-   * misconfiguration) целиком на стороне `handleUpdates`, эта функция
-   * просто честно пробрасывает исключение.
-   */
-  postToChannel: (bucket: BucketId, text: string) => Promise<void>;
   /** Подменяет содержимое карточки владельца на нового кандидата — кнопки остаются активными. */
   replaceCard: (edit: CardEdit) => Promise<void>;
   /**
    * Сносит карточку из лички владельца — вызывается, когда с ней покончено
-   * (опубликовано / скип / кандидаты кончились). Раньше карточка на этом
-   * месте дожёвывалась в «закрытую» (приписка + снятая клавиатура) и
-   * оставалась в чате навсегда; личка зарастала разобранными карточками, а
-   * найти в ней то, что ещё надо послушать, становилось нельзя. Теперь в
-   * чате остаются только живые карточки.
+   * (скип / кандидаты кончились). Раньше карточка на этом месте дожёвывалась
+   * в «закрытую» (приписка + снятая клавиатура) и оставалась в чате
+   * навсегда; личка зарастала разобранными карточками, а найти в ней то, что
+   * ещё надо послушать, становилось нельзя. Теперь в чате остаются только
+   * живые карточки.
    *
    * Обратной связью служит всплывашка `ack` — она несёт ровно тот же текст
-   * («опубликовано», «скип»), что раньше дописывался в подпись, и исчезает
-   * сама.
+   * («скип» и т.п.), что раньше дописывался в подпись, и исчезает сама.
    */
   deleteCard: (messageId: number) => Promise<void>;
   ack: (callbackQueryId: string, text?: string) => Promise<void>;
@@ -115,9 +84,9 @@ const SEED_TAGS_BY_BUCKET = new Map<BucketId, ReadonlySet<string>>(
 );
 
 /**
- * Помечает URL как показанный владельцу — в любом статусе (опубликован,
- * скипнут, заменён кнопкой «другой», просто провисел сутки без ответа и был
- * снесён подчисткой). Экспортируется ради этого последнего случая: подчистку
+ * Помечает URL как показанный владельцу — в любом статусе (скипнут, заменён
+ * кнопкой «другой», просто провисел сутки без ответа и был снесён
+ * подчисткой). Экспортируется ради этого последнего случая: подчистку
  * хвостов делает дневной прогон (`../pipeline/daily.ts`), а решать, что
  * показанное считается показанным, должен один модуль — этот.
  */
@@ -151,73 +120,6 @@ async function safeAck(deps: ApproveDeps, callbackQueryId: string, text?: string
   } catch (error) {
     console.error('approve: не удалось подтвердить callback_query', error);
   }
-}
-
-/**
- * Нажатие «В канал». Три случая:
- *
- * 1. URL уже есть в `state.posted` — карточка зависла в `pending`, хотя
- *    релиз реально ушёл в канал раньше (обычно след того, что предыдущий
- *    прогон упал между реальной публикацией и сохранением состояния — см.
- *    комментарий у "Идемпотентность" в задаче). Публикацию НЕ повторяем,
- *    только приводим состояние в порядок.
- * 2. `postToChannel` бросает — публикации не было. Состояние не трогаем
- *    вообще: карточка остаётся в `pending` с живыми кнопками, `posted` не
- *    пополняется. Именно поэтому повторная обработка того же нажатия (или
- *    осознанный повторный клик владельца) не может опубликовать дважды —
- *    сравнивать не с чем, если состояние ни разу не записало факт публикации.
- * 3. Успех — состояние (posted + удаление из pending) записывается СРАЗУ,
- *    синхронно, до следующего `await` (закрытие карточки у владельца).
- *    Если та правка провалится, posted/pending уже согласованы и не
- *    допустят повторной публикации.
- */
-async function handlePost(
-  state: ApproveState,
-  deps: ApproveDeps,
-  card: PendingCard,
-  index: number,
-  callbackQueryId: string,
-  now: Date,
-  bucketTags: Record<string, number>,
-): Promise<void> {
-  const alreadyPosted = state.posted.some((entry) => entry.url === card.candidate.url);
-  if (alreadyPosted) {
-    rememberSeen(state, card.candidate.url);
-    state.pending.splice(index, 1);
-    await safely(() => deps.deleteCard(card.messageId));
-    await safeAck(deps, callbackQueryId, 'уже опубликовано ранее');
-    return;
-  }
-
-  try {
-    await deps.postToChannel(card.bucket, buildChannelPost(card.candidate, bucketTags));
-  } catch (error) {
-    // recoverable (429/5xx) — временный сбой, стоит просто попробовать ещё
-    // раз; всё остальное (400/401/403/404 и т.п. или вовсе не TelegramApiError)
-    // трактуем как misconfiguration — повтор без вмешательства владельца
-    // не поможет (неверный токен, бот не админ в канале, битый chat_id).
-    const recoverable = error instanceof TelegramApiError && error.recoverable;
-    const detail = error instanceof Error ? error.message : String(error);
-    const message = recoverable
-      ? `не получилось опубликовать — Telegram сейчас недоступен, попробуйте ещё раз (${detail})`
-      : `не получилось опубликовать — похоже, неправильно настроен канал (chat_id/права бота), проверьте настройки и нажмите ещё раз (${detail})`;
-    await safeAck(deps, callbackQueryId, message);
-    return;
-  }
-
-  state.posted.push({
-    itemId: card.candidate.itemId,
-    bucket: card.bucket,
-    url: card.candidate.url,
-    title: card.candidate.title,
-    artist: card.candidate.artist,
-    postedAt: now.toISOString().slice(0, 10),
-  });
-  state.pending.splice(index, 1);
-  rememberSeen(state, card.candidate.url);
-
-  await safely(() => deps.deleteCard(card.messageId));
-  await safeAck(deps, callbackQueryId, 'опубликовано');
 }
 
 async function handleSkip(
@@ -270,30 +172,18 @@ async function handleNext(
  * вызывающий код (ежедневный джоб) сохраняет его в файлы после разбора
  * всей пачки. Сеть и файлы эта функция не трогает вообще — все побочные
  * эффекты идут через `deps`.
- *
- * `bucketTagsByBucket` — веса тегов КАЖДОГО бакета (`BucketProfile.tags` из
- * `../profile/build.ts`, по одному набору на `BucketId`), а не только того,
- * что упомянут в текущей пачке `updates`: нажатие "в канал" может прийти на
- * любой из четырёх бакетов, и `handlePost` (см. ниже) узнаёт, какой из них,
- * только разобрав конкретный callback — до этого не сузить. Обязательный
- * параметр по той же причине, что и `hardRejectTags` в `score()`
- * (`../profile/score.ts`): забытый на вызове параметр должен упасть на
- * `tsc --noEmit`, а не тихо откатить пост в канал на пустые хэштеги.
  */
 export async function handleUpdates(
   updates: TelegramUpdate[],
   state: ApproveState,
   deps: ApproveDeps,
-  bucketTagsByBucket: Record<BucketId, Record<string, number>>,
-  now: Date = new Date(),
 ): Promise<void> {
   for (const update of updates) {
     // Обновление считается "увиденным" независимо от того, как прошла его
     // обработка (успех, ошибка, неизвестная карточка) — иначе Telegram
     // будет бесконечно передоставлять ровно этот update_id на каждом
     // следующем getUpdates. Это НЕ означает "действие выполнено": за это
-    // отвечают posted/pending, которые ниже правятся только при реальном
-    // успехе.
+    // отвечает pending, который ниже правится только при реальном успехе.
     state.lastUpdateId = Math.max(state.lastUpdateId, update.update_id);
     const query = update.callback_query;
     if (!query?.data) continue;
@@ -314,9 +204,7 @@ export async function handleUpdates(
     const card = state.pending[index]!;
 
     try {
-      if (parsed.action === 'post') {
-        await handlePost(state, deps, card, index, query.id, now, bucketTagsByBucket[card.bucket]);
-      } else if (parsed.action === 'skip') {
+      if (parsed.action === 'skip') {
         await handleSkip(state, deps, card, index, query.id);
       } else {
         await handleNext(state, deps, card, index, query.id);
