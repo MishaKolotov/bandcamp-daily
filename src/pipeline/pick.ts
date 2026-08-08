@@ -41,7 +41,7 @@ export interface PickOptions {
   hardRejectTags: readonly string[];
   /**
    * URL релизов, уже показанных владельцу. Ключ — URL, а не itemId (та же
-   * причина, что и у `SelectOptions.seen` в `../pipeline/select.ts`: itemId
+   * причина, что и у снятого вместе с каналами `selectForBucket`: itemId
    * не сравним между источниками, детерминированный ключ между fresh.ts,
    * archive.ts и этой функцией — только URL).
    */
@@ -191,7 +191,7 @@ export function pickBest(options: PickOptions): BestPick | null {
 
   const deduped = dedupeAcrossBuckets(entries);
 
-  // Тот же вторичный ключ, что и в `rankPool` (`./select.ts`), и по той же
+  // Тот же вторичный ключ, что был и у снятого `rankPool`, и по той же
   // причине: равный `total` — не редкость (несколько кандидатов совпали с
   // одним и тем же набором тегов бакета), а порядок кандидатов на входе не
   // гарантирован между прогонами. URL как строка ничего не значит сам по
