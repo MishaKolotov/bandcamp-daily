@@ -118,8 +118,15 @@ test('уже показанное не рассматривается', () => {
   assert.equal(best, null);
 });
 
-test('один и тот же релиз в двух бакетах не задваивается — остаётся сильнейшее совпадение', () => {
-  const shared = ['crust', 'd-beat'];
+test('релиз, попавший и в свежак, и в архив, не становится сам себе «другим кандидатом»', () => {
+  // Это тот случай, ради которого дедуп по URL вообще существует, и
+  // единственный, где его отсутствие ВИДНО снаружи: один и тот же релиз
+  // законно приходит из двух источников (подписка выпустила его сегодня — и
+  // он же набрал голоса соседей в архивном пуле), причём с разными itemId
+  // (у архивного это хеш URL, а не настоящий id Bandcamp). Без схлопывания
+  // он занял бы и первое место, и первую строчку запаса — владелец нажал бы
+  // «другой» и увидел ровно тот же альбом.
+  const twice = ['crust', 'd-beat'];
   const best = pickBest({
     ...base,
     buckets: [
@@ -127,18 +134,41 @@ test('один и тот же релиз в двух бакетах не зад�
         id: 'crust',
         profile: profileOf({ crust: 0.5, 'd-beat': 1 }),
         seedTags: ['crust'],
+        fresh: [candidate('https://x.test/same', twice)],
+        archive: [candidate('https://x.test/same', twice, { itemId: 777, origin: 'archive' })],
+      },
+    ],
+  });
+  assert.equal(best?.candidate.url, 'https://x.test/same');
+  assert.deepEqual(
+    best?.alternatives.map((c) => c.url),
+    [],
+    'дубль того же URL не имеет права попасть в запас «другой»',
+  );
+});
+
+test('один и тот же релиз в двух бакетах достаётся тому, где совпадение сильнее', () => {
+  const shared = ['crust', 'd-beat'];
+  const best = pickBest({
+    ...base,
+    buckets: [
+      {
+        // Слабее: копия переживает скоринг (tagScore ровно 0.5 = MATCH_FLOOR,
+        // проверка строгая `<`, опорный тег есть), но набирает меньше.
+        id: 'hardcore-punk',
+        profile: profileOf({ crust: 0.5, punk: 0.5 }),
+        seedTags: ['crust'],
         fresh: [candidate('https://x.test/same', shared)],
         archive: [],
       },
       {
-        id: 'hardcore-punk',
-        profile: profileOf({ crust: 0.2, punk: 0.5 }),
+        id: 'crust',
+        profile: profileOf({ crust: 0.5, 'd-beat': 1 }),
         seedTags: ['crust'],
         fresh: [candidate('https://x.test/same', shared)],
         archive: [],
       },
     ],
   });
-  assert.equal(best?.bucket, 'crust');
-  assert.deepEqual(best?.alternatives, []);
+  assert.equal(best?.bucket, 'crust', 'кроссовер достаётся бакету, чей профиль совпал сильнее');
 });
