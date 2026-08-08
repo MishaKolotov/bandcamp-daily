@@ -3,12 +3,17 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20.19" },
+  "engines": {
+    "node": ">=20.19"
+  },
   "scripts": {
     "test": "find src -name '*.test.ts' -exec node --import tsx --test {} +",
     "build-profile": "node --import tsx bin/build-profile.ts",
     "neighbors": "node --import tsx bin/neighbors.ts",
-    "daily": "node --import tsx bin/daily.ts"
+    "daily": "node --import tsx bin/daily.ts",
+    "spotify-auth": "node --env-file=.env --import tsx bin/spotify-auth.ts",
+    "spotify-taste": "node --env-file=.env --import tsx bin/spotify-taste.ts",
+    "spotify-crosswalk": "node --env-file=.env --import tsx bin/spotify-crosswalk.ts"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

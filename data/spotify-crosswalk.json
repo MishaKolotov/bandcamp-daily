@@ -1,0 +1,3674 @@
+{
+  "generatedAt": "2026-08-08",
+  "spotifyArtists": 777,
+  "matchedOnBandcamp": 271,
+  "tags": [
+    {
+      "tag": "punk",
+      "weight": 1,
+      "artistCount": 85,
+      "artists": [
+        "Institute",
+        "Fontaines D.C.",
+        "Fontaines D.C.",
+        "The Sound",
+        "cruelster",
+        "Brainbombs"
+      ]
+    },
+    {
+      "tag": "electronic",
+      "weight": 0.6637,
+      "artistCount": 113,
+      "artists": [
+        "Hoax",
+        "Anthony1",
+        "DJ Kuroneko",
+        "Aphex Twin",
+        "Exodia",
+        "Isyti"
+      ]
+    },
+    {
+      "tag": "rock",
+      "weight": 0.3187,
+      "artistCount": 33,
+      "artists": [
+        "Fontaines D.C.",
+        "Brainbombs",
+        "Powerplant",
+        "Primus",
+        "Bark",
+        "Iceage"
+      ]
+    },
+    {
+      "tag": "alternative",
+      "weight": 0.2554,
+      "artistCount": 36,
+      "artists": [
+        "Brainbombs",
+        "конец солнечных дней",
+        "Title Fight",
+        "the seeds",
+        "the seeds",
+        "Iceage"
+      ]
+    },
+    {
+      "tag": "techno",
+      "weight": 0.199,
+      "artistCount": 37,
+      "artists": [
+        "Exodia",
+        "Isyti",
+        "Vladimir Dubyshkin",
+        "Brutalismus 3000",
+        "GLITCHGIRL",
+        "moby"
+      ]
+    },
+    {
+      "tag": "hardcore",
+      "weight": 0.1771,
+      "artistCount": 21,
+      "artists": [
+        "cruelster",
+        "Title Fight",
+        "BIB",
+        "Warthog",
+        "Juggernaut.",
+        "PISS ME OFF"
+      ]
+    },
+    {
+      "tag": "metal",
+      "weight": 0.1606,
+      "artistCount": 14,
+      "artists": [
+        "Këkht Aräkh",
+        "Phantom",
+        "Powerplant",
+        "Warthog",
+        "Blitz",
+        "Existance"
+      ]
+    },
+    {
+      "tag": "ambient",
+      "weight": 0.1581,
+      "artistCount": 20,
+      "artists": [
+        "Tiny Mouse",
+        "Powerplant",
+        "Anthony1",
+        "Quest Master",
+        "City Hunter",
+        "moby"
+      ]
+    },
+    {
+      "tag": "post-punk",
+      "weight": 0.1294,
+      "artistCount": 18,
+      "artists": [
+        "Crime of Passing",
+        "High Vis",
+        "The Nosferatu",
+        "Wipers",
+        "NILS KEPPEL",
+        "The Mall"
+      ]
+    },
+    {
+      "tag": "pop",
+      "weight": 0.1236,
+      "artistCount": 14,
+      "artists": [
+        "Michael Jackson",
+        "Michael Jackson",
+        "Gorillaz",
+        "Ariel Pink",
+        "The Cleaners From Venus",
+        "Kaufmann Frust"
+      ]
+    },
+    {
+      "tag": "hardcore punk",
+      "weight": 0.1148,
+      "artistCount": 10,
+      "artists": [
+        "cruelster",
+        "BIB",
+        "Gas Rag",
+        "Radiation Mask",
+        "de rodillas",
+        "PISS ME OFF"
+      ]
+    },
+    {
+      "tag": "punk rock",
+      "weight": 0.0945,
+      "artistCount": 11,
+      "artists": [
+        "cruelster",
+        "Iceage",
+        "Exit-stance",
+        "Crown Court",
+        "Negative Approach",
+        "Punitive Damage"
+      ]
+    },
+    {
+      "tag": "experimental",
+      "weight": 0.0879,
+      "artistCount": 16,
+      "artists": [
+        "the seeds",
+        "meat computer",
+        "Sewerslvt",
+        "Flower and Pines",
+        "Niki Istrefi",
+        "Doon Kanda"
+      ]
+    },
+    {
+      "tag": "hip-hop/rap",
+      "weight": 0.0868,
+      "artistCount": 8,
+      "artists": [
+        "Kunteynir",
+        "Bladee",
+        "Tyler the Creator",
+        "snctm.",
+        "DJ Tron",
+        "Pusha T"
+      ]
+    },
+    {
+      "tag": "jungle",
+      "weight": 0.0764,
+      "artistCount": 5,
+      "artists": [
+        "Hoax",
+        "DJ Kuroneko",
+        "Machine Girl",
+        "Golden Boy",
+        "DJ Hybrid"
+      ]
+    },
+    {
+      "tag": "trance",
+      "weight": 0.075,
+      "artistCount": 13,
+      "artists": [
+        "Exodia",
+        "Isyti",
+        "DJ HEARTSTRING",
+        "Uf0",
+        "phosphorrgirl",
+        "Cosmic Gate"
+      ]
+    },
+    {
+      "tag": "house",
+      "weight": 0.0718,
+      "artistCount": 17,
+      "artists": [
+        "Underworld",
+        "jamesjamesjames",
+        "Grauzone",
+        "Naked Flames",
+        "KlangKuenstler",
+        "Joris Voorn"
+      ]
+    },
+    {
+      "tag": "garage",
+      "weight": 0.0703,
+      "artistCount": 7,
+      "artists": [
+        "cruelster",
+        "gary d",
+        "Green/Blue",
+        "GEE TEE",
+        "DJ Seinfeld",
+        "Cherry Cheeks"
+      ]
+    },
+    {
+      "tag": "drum & bass",
+      "weight": 0.0699,
+      "artistCount": 4,
+      "artists": [
+        "Hoax",
+        "DJ Kuroneko",
+        "Lil Kevo 303",
+        "DJ Hybrid"
+      ]
+    },
+    {
+      "tag": "indie",
+      "weight": 0.068,
+      "artistCount": 9,
+      "artists": [
+        "Title Fight",
+        "the seeds",
+        "Gorillaz",
+        "Turnover",
+        "Solo Ansamblis",
+        "Kaufmann Frust"
+      ]
+    },
+    {
+      "tag": "indie pop",
+      "weight": 0.0676,
+      "artistCount": 4,
+      "artists": [
+        "Fontaines D.C.",
+        "Danz CM",
+        "Badda Boo",
+        "Choir Boy"
+      ]
+    },
+    {
+      "tag": "hip hop",
+      "weight": 0.067,
+      "artistCount": 5,
+      "artists": [
+        "Kunteynir",
+        "the seeds",
+        "Gorillaz",
+        "DJ Tron",
+        "Pusha T"
+      ]
+    },
+    {
+      "tag": "shoegaze",
+      "weight": 0.0649,
+      "artistCount": 10,
+      "artists": [
+        "Garden Walk",
+        "NILS KEPPEL",
+        "Ariel Pink",
+        "Flower and Pines",
+        "увула",
+        "Автоспорт"
+      ]
+    },
+    {
+      "tag": "emo",
+      "weight": 0.0646,
+      "artistCount": 7,
+      "artists": [
+        "Title Fight",
+        "Garden Walk",
+        "Raw Plastic",
+        "Turnover",
+        "Catholic Guilt",
+        "2005"
+      ]
+    },
+    {
+      "tag": "breakcore",
+      "weight": 0.062,
+      "artistCount": 10,
+      "artists": [
+        "DJ Kuroneko",
+        "GLITCHGIRL",
+        "Killdren",
+        "Machine Girl",
+        "purity://filter",
+        "abnrml"
+      ]
+    },
+    {
+      "tag": "new wave",
+      "weight": 0.0581,
+      "artistCount": 5,
+      "artists": [
+        "The Sound",
+        "Preoccupations",
+        "The Undertones",
+        "Chain Cult",
+        "La Roux"
+      ]
+    },
+    {
+      "tag": "indie rock",
+      "weight": 0.054,
+      "artistCount": 9,
+      "artists": [
+        "touche amore",
+        "The Cleaners From Venus",
+        "Another Lips",
+        "Built To Spill",
+        "Catholic Guilt",
+        "Island of Love"
+      ]
+    },
+    {
+      "tag": "electro",
+      "weight": 0.0522,
+      "artistCount": 10,
+      "artists": [
+        "City Hunter",
+        "Binary Digit",
+        "KlangKuenstler",
+        "Uf0",
+        "Killdren",
+        "Binary Finary"
+      ]
+    },
+    {
+      "tag": "goth",
+      "weight": 0.0516,
+      "artistCount": 3,
+      "artists": [
+        "The Sound",
+        "SPECTRES",
+        "Blu Anxxiety"
+      ]
+    },
+    {
+      "tag": "no wave",
+      "weight": 0.0513,
+      "artistCount": 3,
+      "artists": [
+        "Brainbombs",
+        "NILS KEPPEL",
+        "Prettiest Eyes"
+      ]
+    },
+    {
+      "tag": "coldwave",
+      "weight": 0.0492,
+      "artistCount": 3,
+      "artists": [
+        "конец солнечных дней",
+        "Crime of Passing",
+        "SPECTRES"
+      ]
+    },
+    {
+      "tag": "synth",
+      "weight": 0.0483,
+      "artistCount": 3,
+      "artists": [
+        "Tiny Mouse",
+        "Powerplant",
+        "Alien Nosejob"
+      ]
+    },
+    {
+      "tag": "noise rock",
+      "weight": 0.0481,
+      "artistCount": 3,
+      "artists": [
+        "Brainbombs",
+        "Preoccupations",
+        "Wavves"
+      ]
+    },
+    {
+      "tag": "underground",
+      "weight": 0.0476,
+      "artistCount": 3,
+      "artists": [
+        "Kunteynir",
+        "snctm.",
+        "Dreemwax"
+      ]
+    },
+    {
+      "tag": "rap",
+      "weight": 0.0444,
+      "artistCount": 3,
+      "artists": [
+        "Kunteynir",
+        "Pusha T",
+        "Soulzay"
+      ]
+    },
+    {
+      "tag": "drum n' bass",
+      "weight": 0.0438,
+      "artistCount": 1,
+      "artists": [
+        "Hoax"
+      ]
+    },
+    {
+      "tag": "electronica",
+      "weight": 0.0424,
+      "artistCount": 9,
+      "artists": [
+        "Placid Angles",
+        "Underworld",
+        "Grauzone",
+        "Gai Barone",
+        "Joris Voorn",
+        "Sound Synthesis"
+      ]
+    },
+    {
+      "tag": "cold wave",
+      "weight": 0.0418,
+      "artistCount": 1,
+      "artists": [
+        "The Sound"
+      ]
+    },
+    {
+      "tag": "synthwave",
+      "weight": 0.0413,
+      "artistCount": 6,
+      "artists": [
+        "Quest Master",
+        "City Hunter",
+        "PERMSKY KRAY",
+        "Choir Boy",
+        "Nexus-6",
+        "Luis Ake"
+      ]
+    },
+    {
+      "tag": "slime",
+      "weight": 0.0409,
+      "artistCount": 1,
+      "artists": [
+        "cruelster"
+      ]
+    },
+    {
+      "tag": "alternative rock",
+      "weight": 0.0392,
+      "artistCount": 8,
+      "artists": [
+        "Wipers",
+        "Beach House",
+        "Negative Approach",
+        "The Influence",
+        "PUFFER",
+        "Naked Raygun"
+      ]
+    },
+    {
+      "tag": "lofi",
+      "weight": 0.0392,
+      "artistCount": 6,
+      "artists": [
+        "Raw Plastic",
+        "Hole Dweller",
+        "Binary Digit",
+        "jamesjamesjames",
+        "GEE TEE",
+        "Dreemwax"
+      ]
+    },
+    {
+      "tag": "industrial",
+      "weight": 0.0389,
+      "artistCount": 4,
+      "artists": [
+        "Crime of Passing",
+        "the seeds",
+        "Dieux Des Cimetières",
+        "DJ Speedsick"
+      ]
+    },
+    {
+      "tag": "russian rap",
+      "weight": 0.0378,
+      "artistCount": 1,
+      "artists": [
+        "Kunteynir"
+      ]
+    },
+    {
+      "tag": "dream pop",
+      "weight": 0.0361,
+      "artistCount": 4,
+      "artists": [
+        "конец солнечных дней",
+        "Beach House",
+        "Choir Boy",
+        "Ringo Deathstarr"
+      ]
+    },
+    {
+      "tag": "heavy metal",
+      "weight": 0.0359,
+      "artistCount": 2,
+      "artists": [
+        "Phantom",
+        "Existance"
+      ]
+    },
+    {
+      "tag": "speed metal",
+      "weight": 0.0359,
+      "artistCount": 2,
+      "artists": [
+        "Phantom",
+        "Blitz"
+      ]
+    },
+    {
+      "tag": "dubstep",
+      "weight": 0.0359,
+      "artistCount": 5,
+      "artists": [
+        "Enzyme",
+        "Juggernaut.",
+        "Grauzone",
+        "Djrum",
+        "korrina"
+      ]
+    },
+    {
+      "tag": "new jack swing",
+      "weight": 0.0341,
+      "artistCount": 1,
+      "artists": [
+        "Michael Jackson"
+      ]
+    },
+    {
+      "tag": "acid",
+      "weight": 0.0326,
+      "artistCount": 7,
+      "artists": [
+        "Amour Noir",
+        "Acid Division",
+        "Binary Digit",
+        "KI/KI",
+        "Bones 33",
+        "David Harleydson"
+      ]
+    },
+    {
+      "tag": "thrash metal",
+      "weight": 0.0294,
+      "artistCount": 2,
+      "artists": [
+        "Phantom",
+        "ERUPT"
+      ]
+    },
+    {
+      "tag": "jazz",
+      "weight": 0.0287,
+      "artistCount": 2,
+      "artists": [
+        "Tiny Mouse",
+        "The Influence"
+      ]
+    },
+    {
+      "tag": "dungeon synth",
+      "weight": 0.0283,
+      "artistCount": 3,
+      "artists": [
+        "Quest Master",
+        "Hole Dweller",
+        "Forgotten Pathways"
+      ]
+    },
+    {
+      "tag": "post punk",
+      "weight": 0.0268,
+      "artistCount": 2,
+      "artists": [
+        "Soft Kill",
+        "Preoccupations"
+      ]
+    },
+    {
+      "tag": "black-metal",
+      "weight": 0.0265,
+      "artistCount": 1,
+      "artists": [
+        "Këkht Aräkh"
+      ]
+    },
+    {
+      "tag": "hardcore punk d_beat",
+      "weight": 0.0261,
+      "artistCount": 1,
+      "artists": [
+        "REPTILOIDS"
+      ]
+    },
+    {
+      "tag": "deathrash",
+      "weight": 0.0261,
+      "artistCount": 1,
+      "artists": [
+        "Phantom"
+      ]
+    },
+    {
+      "tag": "metal-punk",
+      "weight": 0.0261,
+      "artistCount": 1,
+      "artists": [
+        "Phantom"
+      ]
+    },
+    {
+      "tag": "vaporwave",
+      "weight": 0.0261,
+      "artistCount": 3,
+      "artists": [
+        "Anthony1",
+        "phosphorrgirl",
+        "VAPERROR"
+      ]
+    },
+    {
+      "tag": "uk garage",
+      "weight": 0.0261,
+      "artistCount": 2,
+      "artists": [
+        "DJ Kuroneko",
+        "gary d"
+      ]
+    },
+    {
+      "tag": "gabber",
+      "weight": 0.0261,
+      "artistCount": 4,
+      "artists": [
+        "Brutalismus 3000",
+        "GLITCHGIRL",
+        "Von Bikräv",
+        "Golden Boy"
+      ]
+    },
+    {
+      "tag": "synthpop",
+      "weight": 0.0261,
+      "artistCount": 6,
+      "artists": [
+        "PERMSKY KRAY",
+        "LA FEMME",
+        "Danz CM",
+        "Choir Boy",
+        "KATE NV",
+        "Cherry Cheeks"
+      ]
+    },
+    {
+      "tag": "black metal",
+      "weight": 0.0261,
+      "artistCount": 4,
+      "artists": [
+        "Aura Noir",
+        "Revenge",
+        "Felvum",
+        "SESSO VIOLENTO"
+      ]
+    },
+    {
+      "tag": "nice",
+      "weight": 0.0254,
+      "artistCount": 1,
+      "artists": [
+        "Tiny Mouse"
+      ]
+    },
+    {
+      "tag": "comfy synth",
+      "weight": 0.0254,
+      "artistCount": 1,
+      "artists": [
+        "Tiny Mouse"
+      ]
+    },
+    {
+      "tag": "mouse synth",
+      "weight": 0.0254,
+      "artistCount": 1,
+      "artists": [
+        "Tiny Mouse"
+      ]
+    },
+    {
+      "tag": "new york",
+      "weight": 0.0232,
+      "artistCount": 2,
+      "artists": [
+        "Warthog",
+        "Prolaps"
+      ]
+    },
+    {
+      "tag": "postpunk",
+      "weight": 0.0231,
+      "artistCount": 1,
+      "artists": [
+        "конец солнечных дней"
+      ]
+    },
+    {
+      "tag": "soundtrack",
+      "weight": 0.0231,
+      "artistCount": 2,
+      "artists": [
+        "Diät",
+        "Carter Burwell"
+      ]
+    },
+    {
+      "tag": "glitch",
+      "weight": 0.0228,
+      "artistCount": 2,
+      "artists": [
+        "Anthony1",
+        "3L3D3P"
+      ]
+    },
+    {
+      "tag": "sextrance",
+      "weight": 0.0228,
+      "artistCount": 4,
+      "artists": [
+        "Isyti",
+        "sixteen veins",
+        "phosphorrgirl",
+        "abnrml"
+      ]
+    },
+    {
+      "tag": "dance",
+      "weight": 0.0228,
+      "artistCount": 6,
+      "artists": [
+        "Underworld",
+        "Joris Voorn",
+        "Armin van Buuren",
+        "Binary Finary",
+        "3L3D3P",
+        "VAPERROR"
+      ]
+    },
+    {
+      "tag": "techno.",
+      "weight": 0.0228,
+      "artistCount": 5,
+      "artists": [
+        "Niki Istrefi",
+        "MRD",
+        "Narciss",
+        "umbraid",
+        "Z@P"
+      ]
+    },
+    {
+      "tag": "idm",
+      "weight": 0.0228,
+      "artistCount": 6,
+      "artists": [
+        "Uf0",
+        "Sound Synthesis",
+        "Downhill2k01",
+        "David Harleydson",
+        "Kettel",
+        "Four Tet"
+      ]
+    },
+    {
+      "tag": "d-beat",
+      "weight": 0.0224,
+      "artistCount": 1,
+      "artists": [
+        "Impalers"
+      ]
+    },
+    {
+      "tag": "omaha ne",
+      "weight": 0.022,
+      "artistCount": 1,
+      "artists": [
+        "BIB"
+      ]
+    },
+    {
+      "tag": "nebraska",
+      "weight": 0.022,
+      "artistCount": 1,
+      "artists": [
+        "BIB"
+      ]
+    },
+    {
+      "tag": "podcasts",
+      "weight": 0.0218,
+      "artistCount": 1,
+      "artists": [
+        "LIL UGLY MANE"
+      ]
+    },
+    {
+      "tag": "dark ambient",
+      "weight": 0.0218,
+      "artistCount": 2,
+      "artists": [
+        "Quest Master",
+        "Forgotten Pathways"
+      ]
+    },
+    {
+      "tag": "sydney punk",
+      "weight": 0.02,
+      "artistCount": 1,
+      "artists": [
+        "Low Life"
+      ]
+    },
+    {
+      "tag": "positive energy",
+      "weight": 0.0198,
+      "artistCount": 1,
+      "artists": [
+        "Diät"
+      ]
+    },
+    {
+      "tag": "iron lung records",
+      "weight": 0.0198,
+      "artistCount": 1,
+      "artists": [
+        "Diät"
+      ]
+    },
+    {
+      "tag": "diät",
+      "weight": 0.0198,
+      "artistCount": 1,
+      "artists": [
+        "Diät"
+      ]
+    },
+    {
+      "tag": "tough new wave",
+      "weight": 0.0198,
+      "artistCount": 1,
+      "artists": [
+        "Diät"
+      ]
+    },
+    {
+      "tag": "cincinnati",
+      "weight": 0.0196,
+      "artistCount": 1,
+      "artists": [
+        "Crime of Passing"
+      ]
+    },
+    {
+      "tag": "sampling",
+      "weight": 0.0196,
+      "artistCount": 1,
+      "artists": [
+        "Anthony1"
+      ]
+    },
+    {
+      "tag": "samples",
+      "weight": 0.0196,
+      "artistCount": 1,
+      "artists": [
+        "Anthony1"
+      ]
+    },
+    {
+      "tag": "trap",
+      "weight": 0.0196,
+      "artistCount": 2,
+      "artists": [
+        "Bladee",
+        "VAPERROR"
+      ]
+    },
+    {
+      "tag": "lo-fi",
+      "weight": 0.0196,
+      "artistCount": 4,
+      "artists": [
+        "jamesjamesjames",
+        "snctm.",
+        "Island of Love",
+        "Wavves"
+      ]
+    },
+    {
+      "tag": "world",
+      "weight": 0.0196,
+      "artistCount": 5,
+      "artists": [
+        "LA FEMME",
+        "Torus",
+        "Altin Gün",
+        "Tony Allen",
+        "Locked Club"
+      ]
+    },
+    {
+      "tag": "new age",
+      "weight": 0.0185,
+      "artistCount": 2,
+      "artists": [
+        "Quest Master",
+        "Жарок"
+      ]
+    },
+    {
+      "tag": "post-hardcore",
+      "weight": 0.0181,
+      "artistCount": 1,
+      "artists": [
+        "touche amore"
+      ]
+    },
+    {
+      "tag": "screamo",
+      "weight": 0.0181,
+      "artistCount": 1,
+      "artists": [
+        "touche amore"
+      ]
+    },
+    {
+      "tag": "rock & roll",
+      "weight": 0.017,
+      "artistCount": 2,
+      "artists": [
+        "Bark",
+        "P.R.O.B.L.E.M.S."
+      ]
+    },
+    {
+      "tag": "brooklyn",
+      "weight": 0.0167,
+      "artistCount": 1,
+      "artists": [
+        "Warthog"
+      ]
+    },
+    {
+      "tag": "drill",
+      "weight": 0.0163,
+      "artistCount": 1,
+      "artists": [
+        "Bladee"
+      ]
+    },
+    {
+      "tag": "experimental hip-hop",
+      "weight": 0.0163,
+      "artistCount": 1,
+      "artists": [
+        "Bladee"
+      ]
+    },
+    {
+      "tag": "rage",
+      "weight": 0.0163,
+      "artistCount": 1,
+      "artists": [
+        "Bladee"
+      ]
+    },
+    {
+      "tag": "cloud rap",
+      "weight": 0.0163,
+      "artistCount": 1,
+      "artists": [
+        "Bladee"
+      ]
+    },
+    {
+      "tag": "spoken word",
+      "weight": 0.0163,
+      "artistCount": 1,
+      "artists": [
+        "Chronophage"
+      ]
+    },
+    {
+      "tag": "hard techno",
+      "weight": 0.0163,
+      "artistCount": 2,
+      "artists": [
+        "Isyti",
+        "umbraid"
+      ]
+    },
+    {
+      "tag": "darkwave",
+      "weight": 0.0163,
+      "artistCount": 2,
+      "artists": [
+        "Filmmaker",
+        "bishkek"
+      ]
+    },
+    {
+      "tag": "synthpunk",
+      "weight": 0.0163,
+      "artistCount": 2,
+      "artists": [
+        "Filmmaker",
+        "Cherry Cheeks"
+      ]
+    },
+    {
+      "tag": "alternative pop",
+      "weight": 0.0163,
+      "artistCount": 2,
+      "artists": [
+        "Gorillaz",
+        "Green/Blue"
+      ]
+    },
+    {
+      "tag": "ebm",
+      "weight": 0.0163,
+      "artistCount": 3,
+      "artists": [
+        "The Mall",
+        "Blu Anxxiety",
+        "Locked Club"
+      ]
+    },
+    {
+      "tag": "breakbeat",
+      "weight": 0.0163,
+      "artistCount": 4,
+      "artists": [
+        "Maruwa",
+        "pisca",
+        "Golden Boy",
+        "David Harleydson"
+      ]
+    },
+    {
+      "tag": "drum and bass",
+      "weight": 0.0163,
+      "artistCount": 4,
+      "artists": [
+        "Machine Girl",
+        "korrina",
+        "pisca",
+        "TURQUOISEDEATH"
+      ]
+    },
+    {
+      "tag": "video game",
+      "weight": 0.0152,
+      "artistCount": 1,
+      "artists": [
+        "Quest Master"
+      ]
+    },
+    {
+      "tag": "comedy",
+      "weight": 0.0146,
+      "artistCount": 1,
+      "artists": [
+        "Lumpy & The Dumpers"
+      ]
+    },
+    {
+      "tag": "london",
+      "weight": 0.0144,
+      "artistCount": 1,
+      "artists": [
+        "High Vis"
+      ]
+    },
+    {
+      "tag": "gothic",
+      "weight": 0.0139,
+      "artistCount": 2,
+      "artists": [
+        "The Nosferatu",
+        "Current 93"
+      ]
+    },
+    {
+      "tag": "deathrock",
+      "weight": 0.0139,
+      "artistCount": 2,
+      "artists": [
+        "The Nosferatu",
+        "Chain Cult"
+      ]
+    },
+    {
+      "tag": "gothic rock",
+      "weight": 0.0139,
+      "artistCount": 2,
+      "artists": [
+        "The Nosferatu",
+        "Current 93"
+      ]
+    },
+    {
+      "tag": "chicago",
+      "weight": 0.0135,
+      "artistCount": 2,
+      "artists": [
+        "Gas Rag",
+        "Rob Scallon"
+      ]
+    },
+    {
+      "tag": "nightcore",
+      "weight": 0.0131,
+      "artistCount": 1,
+      "artists": [
+        "Isyti"
+      ]
+    },
+    {
+      "tag": "bootgaze",
+      "weight": 0.0131,
+      "artistCount": 1,
+      "artists": [
+        "HOME FRONT"
+      ]
+    },
+    {
+      "tag": "minimal synth",
+      "weight": 0.0131,
+      "artistCount": 1,
+      "artists": [
+        "Filmmaker"
+      ]
+    },
+    {
+      "tag": "synth punk",
+      "weight": 0.0131,
+      "artistCount": 2,
+      "artists": [
+        "Raw Plastic",
+        "Prettiest Eyes"
+      ]
+    },
+    {
+      "tag": "bedroom",
+      "weight": 0.0131,
+      "artistCount": 2,
+      "artists": [
+        "Raw Plastic",
+        "purity://filter"
+      ]
+    },
+    {
+      "tag": "hardstyle",
+      "weight": 0.0131,
+      "artistCount": 2,
+      "artists": [
+        "Brutalismus 3000",
+        "abnrml"
+      ]
+    },
+    {
+      "tag": "darksynth",
+      "weight": 0.0131,
+      "artistCount": 2,
+      "artists": [
+        "City Hunter",
+        "Nexus-6"
+      ]
+    },
+    {
+      "tag": "experimental electronic",
+      "weight": 0.0131,
+      "artistCount": 2,
+      "artists": [
+        "GLITCHGIRL",
+        "Danz CM"
+      ]
+    },
+    {
+      "tag": "noise",
+      "weight": 0.0131,
+      "artistCount": 3,
+      "artists": [
+        "Flower and Pines",
+        "Yellow Swans",
+        "Mandy, Indiana"
+      ]
+    },
+    {
+      "tag": "braindance",
+      "weight": 0.0131,
+      "artistCount": 2,
+      "artists": [
+        "Binary Digit",
+        "Uf0"
+      ]
+    },
+    {
+      "tag": "garage punk",
+      "weight": 0.0131,
+      "artistCount": 3,
+      "artists": [
+        "PISS ME OFF",
+        "Alien Nosejob",
+        "Prettiest Eyes"
+      ]
+    },
+    {
+      "tag": "death metal",
+      "weight": 0.0131,
+      "artistCount": 2,
+      "artists": [
+        "Revenge",
+        "Cemetery"
+      ]
+    },
+    {
+      "tag": "rave",
+      "weight": 0.0131,
+      "artistCount": 3,
+      "artists": [
+        "Killdren",
+        "X CLUB.",
+        "DJ Hybrid"
+      ]
+    },
+    {
+      "tag": "grunge",
+      "weight": 0.0131,
+      "artistCount": 3,
+      "artists": [
+        "CULTURE ABUSE",
+        "PUFFER",
+        "Enumclaw"
+      ]
+    },
+    {
+      "tag": "psychedelic",
+      "weight": 0.0131,
+      "artistCount": 4,
+      "artists": [
+        "Yellow Swans",
+        "Vibravoid",
+        "Жарок",
+        "Prettiest Eyes"
+      ]
+    },
+    {
+      "tag": "gothic metal",
+      "weight": 0.0107,
+      "artistCount": 1,
+      "artists": [
+        "The Nosferatu"
+      ]
+    },
+    {
+      "tag": "d beat",
+      "weight": 0.0102,
+      "artistCount": 1,
+      "artists": [
+        "Gas Rag"
+      ]
+    },
+    {
+      "tag": "alrernative",
+      "weight": 0.0098,
+      "artistCount": 1,
+      "artists": [
+        "Gorillaz"
+      ]
+    },
+    {
+      "tag": "black speed metal",
+      "weight": 0.0098,
+      "artistCount": 1,
+      "artists": [
+        "Blitz"
+      ]
+    },
+    {
+      "tag": "hard rock",
+      "weight": 0.0098,
+      "artistCount": 1,
+      "artists": [
+        "Existance"
+      ]
+    },
+    {
+      "tag": "neue deutsche welle",
+      "weight": 0.0098,
+      "artistCount": 1,
+      "artists": [
+        "NILS KEPPEL"
+      ]
+    },
+    {
+      "tag": "synth-punk",
+      "weight": 0.0098,
+      "artistCount": 1,
+      "artists": [
+        "The Mall"
+      ]
+    },
+    {
+      "tag": "minimal wave",
+      "weight": 0.0098,
+      "artistCount": 1,
+      "artists": [
+        "The Mall"
+      ]
+    },
+    {
+      "tag": "left field bass",
+      "weight": 0.0098,
+      "artistCount": 1,
+      "artists": [
+        "Enzyme"
+      ]
+    },
+    {
+      "tag": "eurodance",
+      "weight": 0.0098,
+      "artistCount": 1,
+      "artists": [
+        "DJ HEARTSTRING"
+      ]
+    },
+    {
+      "tag": "progressive metal",
+      "weight": 0.0098,
+      "artistCount": 1,
+      "artists": [
+        "Ricochet"
+      ]
+    },
+    {
+      "tag": "progressive rock",
+      "weight": 0.0098,
+      "artistCount": 1,
+      "artists": [
+        "Ricochet"
+      ]
+    },
+    {
+      "tag": "progrock",
+      "weight": 0.0098,
+      "artistCount": 1,
+      "artists": [
+        "Ricochet"
+      ]
+    },
+    {
+      "tag": "dreampop",
+      "weight": 0.0098,
+      "artistCount": 1,
+      "artists": [
+        "Ariel Pink"
+      ]
+    },
+    {
+      "tag": "alternative hip-hop",
+      "weight": 0.0098,
+      "artistCount": 1,
+      "artists": [
+        "meat computer"
+      ]
+    },
+    {
+      "tag": "early hardstyle",
+      "weight": 0.0098,
+      "artistCount": 1,
+      "artists": [
+        "Brutalismus 3000"
+      ]
+    },
+    {
+      "tag": "nugabber",
+      "weight": 0.0098,
+      "artistCount": 1,
+      "artists": [
+        "Brutalismus 3000"
+      ]
+    },
+    {
+      "tag": "cyberpunk",
+      "weight": 0.0098,
+      "artistCount": 1,
+      "artists": [
+        "City Hunter"
+      ]
+    },
+    {
+      "tag": "bakalao",
+      "weight": 0.0098,
+      "artistCount": 1,
+      "artists": [
+        "GLITCHGIRL"
+      ]
+    },
+    {
+      "tag": "video game music",
+      "weight": 0.0098,
+      "artistCount": 2,
+      "artists": [
+        "Hole Dweller",
+        "Short Circuit"
+      ]
+    },
+    {
+      "tag": "mental",
+      "weight": 0.0098,
+      "artistCount": 2,
+      "artists": [
+        "Acid Division",
+        "Protokseed"
+      ]
+    },
+    {
+      "tag": "doom",
+      "weight": 0.0098,
+      "artistCount": 2,
+      "artists": [
+        "Monolord",
+        "purity://filter"
+      ]
+    },
+    {
+      "tag": "psychedelic rock",
+      "weight": 0.0098,
+      "artistCount": 2,
+      "artists": [
+        "Monolord",
+        "Vibravoid"
+      ]
+    },
+    {
+      "tag": "neofolk",
+      "weight": 0.0098,
+      "artistCount": 2,
+      "artists": [
+        "Forgotten Pathways",
+        "Dieux Des Cimetières"
+      ]
+    },
+    {
+      "tag": "footwork",
+      "weight": 0.0098,
+      "artistCount": 2,
+      "artists": [
+        "Machine Girl",
+        "Lil Kevo 303"
+      ]
+    },
+    {
+      "tag": "drone",
+      "weight": 0.0098,
+      "artistCount": 3,
+      "artists": [
+        "Yellow Swans",
+        "purity://filter",
+        "Spacemen 3 "
+      ]
+    },
+    {
+      "tag": "pop punk",
+      "weight": 0.0098,
+      "artistCount": 3,
+      "artists": [
+        "Catholic Guilt",
+        "The Undertones",
+        "2005"
+      ]
+    },
+    {
+      "tag": "australia",
+      "weight": 0.0098,
+      "artistCount": 3,
+      "artists": [
+        "Billiam",
+        "Alien Nosejob",
+        "Sex Drive"
+      ]
+    },
+    {
+      "tag": "chillout",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "moby"
+      ]
+    },
+    {
+      "tag": "anarcho",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Exit-stance"
+      ]
+    },
+    {
+      "tag": "independent",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Exit-stance"
+      ]
+    },
+    {
+      "tag": "protest",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Exit-stance"
+      ]
+    },
+    {
+      "tag": "socal punk",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Agent Orange"
+      ]
+    },
+    {
+      "tag": "punkrock",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Agent Orange"
+      ]
+    },
+    {
+      "tag": "deep",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Amour Noir"
+      ]
+    },
+    {
+      "tag": "raw",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Amour Noir"
+      ]
+    },
+    {
+      "tag": "hypnotic",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Amour Noir"
+      ]
+    },
+    {
+      "tag": "post-industrial",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Flower and Pines"
+      ]
+    },
+    {
+      "tag": "lord of the rings",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Hole Dweller"
+      ]
+    },
+    {
+      "tag": "fantasy synth",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Hole Dweller"
+      ]
+    },
+    {
+      "tag": "oi!",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Crown Court"
+      ]
+    },
+    {
+      "tag": "street punk",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Crown Court"
+      ]
+    },
+    {
+      "tag": "skinhead",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Crown Court"
+      ]
+    },
+    {
+      "tag": "tape",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Binary Digit"
+      ]
+    },
+    {
+      "tag": "2step",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "gary d"
+      ]
+    },
+    {
+      "tag": "4x4",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "gary d"
+      ]
+    },
+    {
+      "tag": "webcore",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "quench"
+      ]
+    },
+    {
+      "tag": "stoner metal",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Monolord"
+      ]
+    },
+    {
+      "tag": "sludge",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Monolord"
+      ]
+    },
+    {
+      "tag": "stoner",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Monolord"
+      ]
+    },
+    {
+      "tag": "club bangers",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Anetha"
+      ]
+    },
+    {
+      "tag": "transe",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Anetha"
+      ]
+    },
+    {
+      "tag": "post-club",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Anetha"
+      ]
+    },
+    {
+      "tag": "sovietwave",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "PERMSKY KRAY"
+      ]
+    },
+    {
+      "tag": "peace punk",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "SPECTRES"
+      ]
+    },
+    {
+      "tag": "death rock",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "SPECTRES"
+      ]
+    },
+    {
+      "tag": "sad rock",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Another Lips"
+      ]
+    },
+    {
+      "tag": "minsk",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Another Lips"
+      ]
+    },
+    {
+      "tag": "garage pop",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Green/Blue"
+      ]
+    },
+    {
+      "tag": "lo-fi house",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "jamesjamesjames"
+      ]
+    },
+    {
+      "tag": "lofi house",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "jamesjamesjames"
+      ]
+    },
+    {
+      "tag": "chillwave",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "snctm."
+      ]
+    },
+    {
+      "tag": "more",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "snctm."
+      ]
+    },
+    {
+      "tag": "global groove",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "LA FEMME"
+      ]
+    },
+    {
+      "tag": "downbeat",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Grauzone"
+      ]
+    },
+    {
+      "tag": "doon kanda",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Doon Kanda"
+      ]
+    },
+    {
+      "tag": "rock n' roll",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "GEE TEE"
+      ]
+    },
+    {
+      "tag": "pc music",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "A. G. Cook"
+      ]
+    },
+    {
+      "tag": "new alias",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "A. G. Cook"
+      ]
+    },
+    {
+      "tag": "acid house",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "KlangKuenstler"
+      ]
+    },
+    {
+      "tag": "techhouse",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "KlangKuenstler"
+      ]
+    },
+    {
+      "tag": "dance music",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Prolaps"
+      ]
+    },
+    {
+      "tag": "indie pop.",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Built To Spill"
+      ]
+    },
+    {
+      "tag": "black death metal",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Revenge"
+      ]
+    },
+    {
+      "tag": "war metal",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Revenge"
+      ]
+    },
+    {
+      "tag": "extreme metal",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Revenge"
+      ]
+    },
+    {
+      "tag": "death indie",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "увула"
+      ]
+    },
+    {
+      "tag": "sadcore",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "увула"
+      ]
+    },
+    {
+      "tag": "symphonic",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Forgotten Pathways"
+      ]
+    },
+    {
+      "tag": "medieval ambient",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Forgotten Pathways"
+      ]
+    },
+    {
+      "tag": "old school",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Cemetery"
+      ]
+    },
+    {
+      "tag": "progressive",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Cemetery"
+      ]
+    },
+    {
+      "tag": "raw punk",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "SESSO VIOLENTO"
+      ]
+    },
+    {
+      "tag": "rave-punk",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Killdren"
+      ]
+    },
+    {
+      "tag": "juke",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Machine Girl"
+      ]
+    },
+    {
+      "tag": "freaks",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "Electric Chair"
+      ]
+    },
+    {
+      "tag": "booze",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "CULTURE ABUSE"
+      ]
+    },
+    {
+      "tag": "weed",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "CULTURE ABUSE"
+      ]
+    },
+    {
+      "tag": "chill dudes",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "CULTURE ABUSE"
+      ]
+    },
+    {
+      "tag": "party music",
+      "weight": 0.0065,
+      "artistCount": 1,
+      "artists": [
+        "CULTURE ABUSE"
+      ]
+    },
+    {
+      "tag": "industrial techno",
+      "weight": 0.0065,
+      "artistCount": 2,
+      "artists": [
+        "sixteen veins",
+        "✧ BRAINDAAMAGE ✧"
+      ]
+    },
+    {
+      "tag": "krautrock",
+      "weight": 0.0065,
+      "artistCount": 2,
+      "artists": [
+        "Vibravoid",
+        "Prettiest Eyes"
+      ]
+    },
+    {
+      "tag": "edm",
+      "weight": 0.0065,
+      "artistCount": 2,
+      "artists": [
+        "Joris Voorn",
+        "tcm"
+      ]
+    },
+    {
+      "tag": "hard dance",
+      "weight": 0.0065,
+      "artistCount": 2,
+      "artists": [
+        "Dune",
+        "umbraid"
+      ]
+    },
+    {
+      "tag": "freestyle",
+      "weight": 0.0065,
+      "artistCount": 2,
+      "artists": [
+        "Blu Anxxiety",
+        "Pusha T"
+      ]
+    },
+    {
+      "tag": "acidcore",
+      "weight": 0.0065,
+      "artistCount": 2,
+      "artists": [
+        "Protokseed",
+        "Bones 33"
+      ]
+    },
+    {
+      "tag": "hard trance",
+      "weight": 0.0065,
+      "artistCount": 2,
+      "artists": [
+        "DJ IBON",
+        "umbraid"
+      ]
+    },
+    {
+      "tag": "groove",
+      "weight": 0.0065,
+      "artistCount": 2,
+      "artists": [
+        "The Influence",
+        "Altin Gün"
+      ]
+    },
+    {
+      "tag": "soul",
+      "weight": 0.0065,
+      "artistCount": 2,
+      "artists": [
+        "Phoenixx",
+        "Rbsn"
+      ]
+    },
+    {
+      "tag": "folk",
+      "weight": 0.0065,
+      "artistCount": 2,
+      "artists": [
+        "Field Medic",
+        "Rbsn"
+      ]
+    },
+    {
+      "tag": "psych",
+      "weight": 0.0065,
+      "artistCount": 2,
+      "artists": [
+        "Altin Gün",
+        "Prison Affair"
+      ]
+    },
+    {
+      "tag": "singer-songwriter",
+      "weight": 0.0065,
+      "artistCount": 2,
+      "artists": [
+        "Rbsn",
+        "Rein Sanction"
+      ]
+    },
+    {
+      "tag": "plunderphonics",
+      "weight": 0.0065,
+      "artistCount": 2,
+      "artists": [
+        "korrina",
+        "c678924"
+      ]
+    },
+    {
+      "tag": "funk",
+      "weight": 0.0065,
+      "artistCount": 2,
+      "artists": [
+        "DJ Tron",
+        "Tommy Villiers"
+      ]
+    },
+    {
+      "tag": "remixes",
+      "weight": 0.0065,
+      "artistCount": 2,
+      "artists": [
+        "DJ Tron",
+        "Short Circuit"
+      ]
+    },
+    {
+      "tag": "thrash hiphop electro punk indie",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "N8NOFACE"
+      ]
+    },
+    {
+      "tag": "electronic music",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Yellow Swans"
+      ]
+    },
+    {
+      "tag": "techno music",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Slam"
+      ]
+    },
+    {
+      "tag": "dumbandbass",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "purity://filter"
+      ]
+    },
+    {
+      "tag": "russian post-punk",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "bishkek"
+      ]
+    },
+    {
+      "tag": "hexdtrance",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "sixteen veins"
+      ]
+    },
+    {
+      "tag": "melodic house & techno",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "sixteen veins"
+      ]
+    },
+    {
+      "tag": "vaporbreaks",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "phosphorrgirl"
+      ]
+    },
+    {
+      "tag": "folk punk",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Catholic Guilt"
+      ]
+    },
+    {
+      "tag": "melbourne",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Billiam"
+      ]
+    },
+    {
+      "tag": "stuttgart",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Kaufmann Frust"
+      ]
+    },
+    {
+      "tag": "indiepop",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Kaufmann Frust"
+      ]
+    },
+    {
+      "tag": "scuzzy",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Island of Love"
+      ]
+    },
+    {
+      "tag": "analog",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Danz CM"
+      ]
+    },
+    {
+      "tag": "indie folk",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Badda Boo"
+      ]
+    },
+    {
+      "tag": "acid rock",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Vibravoid"
+      ]
+    },
+    {
+      "tag": "organic house",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Gai Barone"
+      ]
+    },
+    {
+      "tag": "melodic techno",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Gai Barone"
+      ]
+    },
+    {
+      "tag": "progressive house",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Gai Barone"
+      ]
+    },
+    {
+      "tag": "happy hardcore",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Dune"
+      ]
+    },
+    {
+      "tag": "uk hardcore",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Dune"
+      ]
+    },
+    {
+      "tag": "tribe",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Protokseed"
+      ]
+    },
+    {
+      "tag": "mentalcore",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Protokseed"
+      ]
+    },
+    {
+      "tag": "newwave",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Choir Boy"
+      ]
+    },
+    {
+      "tag": "synth pop",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Traumatin"
+      ]
+    },
+    {
+      "tag": "martial industrial",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Dieux Des Cimetières"
+      ]
+    },
+    {
+      "tag": "neoclassical",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Dieux Des Cimetières"
+      ]
+    },
+    {
+      "tag": "pop rock",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "2005"
+      ]
+    },
+    {
+      "tag": "fusion",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "The Influence"
+      ]
+    },
+    {
+      "tag": "reggae",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Phoenixx"
+      ]
+    },
+    {
+      "tag": "r&b",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Phoenixx"
+      ]
+    },
+    {
+      "tag": "alternativesoulmusic",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Phoenixx"
+      ]
+    },
+    {
+      "tag": "david bowie",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "David Bowie"
+      ]
+    },
+    {
+      "tag": "hiphop rap",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "abnrml"
+      ]
+    },
+    {
+      "tag": "contemporary",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Ólafur Arnalds"
+      ]
+    },
+    {
+      "tag": "newmusic",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Ólafur Arnalds"
+      ]
+    },
+    {
+      "tag": "turkish",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Altin Gün"
+      ]
+    },
+    {
+      "tag": "tech",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Binary Finary"
+      ]
+    },
+    {
+      "tag": "dreamwave",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Nexus-6"
+      ]
+    },
+    {
+      "tag": "mote-evolver",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Steve Rachmad"
+      ]
+    },
+    {
+      "tag": "electropunk",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Suicide"
+      ]
+    },
+    {
+      "tag": "protopunk",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Suicide"
+      ]
+    },
+    {
+      "tag": "avatntgarde",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Suicide"
+      ]
+    },
+    {
+      "tag": "afrofunk",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Tony Allen"
+      ]
+    },
+    {
+      "tag": "afrobeat",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Tony Allen"
+      ]
+    },
+    {
+      "tag": "tony allen",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Tony Allen"
+      ]
+    },
+    {
+      "tag": "fela kuti",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Tony Allen"
+      ]
+    },
+    {
+      "tag": "nigeria",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Tony Allen"
+      ]
+    },
+    {
+      "tag": "disco",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Narciss"
+      ]
+    },
+    {
+      "tag": "italo disco",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Narciss"
+      ]
+    },
+    {
+      "tag": "hyperpop techno",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "umbraid"
+      ]
+    },
+    {
+      "tag": "hard",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Locked Club"
+      ]
+    },
+    {
+      "tag": "far east",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Locked Club"
+      ]
+    },
+    {
+      "tag": "power violence",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "MARTO"
+      ]
+    },
+    {
+      "tag": "goa",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Astral Projection"
+      ]
+    },
+    {
+      "tag": "goa trance",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Astral Projection"
+      ]
+    },
+    {
+      "tag": "psytrance",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Astral Projection"
+      ]
+    },
+    {
+      "tag": "trance music",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Astral Projection"
+      ]
+    },
+    {
+      "tag": "trance.",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Astral Projection"
+      ]
+    },
+    {
+      "tag": "thrash",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Wound Man"
+      ]
+    },
+    {
+      "tag": "fastcore",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Wound Man"
+      ]
+    },
+    {
+      "tag": "powerviolence",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Wound Man"
+      ]
+    },
+    {
+      "tag": "ambient electronic",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Ideation"
+      ]
+    },
+    {
+      "tag": "improvised",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Ideation"
+      ]
+    },
+    {
+      "tag": "teenage color",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "COLLEGE"
+      ]
+    },
+    {
+      "tag": "real hero",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "COLLEGE"
+      ]
+    },
+    {
+      "tag": "a real hero",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "COLLEGE"
+      ]
+    },
+    {
+      "tag": "valerie records",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "COLLEGE"
+      ]
+    },
+    {
+      "tag": "valerie",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "COLLEGE"
+      ]
+    },
+    {
+      "tag": "score",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Carter Burwell"
+      ]
+    },
+    {
+      "tag": "film",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Carter Burwell"
+      ]
+    },
+    {
+      "tag": "schlager",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Luis Ake"
+      ]
+    },
+    {
+      "tag": "synth-pop",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "La Roux"
+      ]
+    },
+    {
+      "tag": "siberian plant species",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Жарок"
+      ]
+    },
+    {
+      "tag": "poprock",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Rein Sanction"
+      ]
+    },
+    {
+      "tag": "bluesrock",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Rein Sanction"
+      ]
+    },
+    {
+      "tag": "brothers",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Rein Sanction"
+      ]
+    },
+    {
+      "tag": "indierock",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Rein Sanction"
+      ]
+    },
+    {
+      "tag": "hardtechno",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "✧ BRAINDAAMAGE ✧"
+      ]
+    },
+    {
+      "tag": "experimental rock",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "PUFFER"
+      ]
+    },
+    {
+      "tag": "malta",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Sound Synthesis"
+      ]
+    },
+    {
+      "tag": "futurepast",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Sound Synthesis"
+      ]
+    },
+    {
+      "tag": "jersey club remix",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "korrina"
+      ]
+    },
+    {
+      "tag": "beats",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "DJ Tron"
+      ]
+    },
+    {
+      "tag": "edits",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "DJ Tron"
+      ]
+    },
+    {
+      "tag": "hardtek",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Venom Hardtek"
+      ]
+    },
+    {
+      "tag": "tribecore",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Venom Hardtek"
+      ]
+    },
+    {
+      "tag": "frenchcore",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Venom Hardtek"
+      ]
+    },
+    {
+      "tag": "hardtekno",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Venom Hardtek"
+      ]
+    },
+    {
+      "tag": "industrial-techno",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "WNDRLST"
+      ]
+    },
+    {
+      "tag": "hard-techno",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "WNDRLST"
+      ]
+    },
+    {
+      "tag": "dark-techno",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "WNDRLST"
+      ]
+    },
+    {
+      "tag": "devotional",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Segunda Mordida"
+      ]
+    },
+    {
+      "tag": "jumpstyle",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Von Bikräv"
+      ]
+    },
+    {
+      "tag": "hard house",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Von Bikräv"
+      ]
+    },
+    {
+      "tag": "freeform hardcore",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "c678924"
+      ]
+    },
+    {
+      "tag": "hexd",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "c678924"
+      ]
+    },
+    {
+      "tag": "keyboard",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Short Circuit"
+      ]
+    },
+    {
+      "tag": "instrumental",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "dj poolboi"
+      ]
+    },
+    {
+      "tag": "lofihouselo-fihouse",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "dj poolboi"
+      ]
+    },
+    {
+      "tag": "deep house",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "dj poolboi"
+      ]
+    },
+    {
+      "tag": "chiptune",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Pusha T"
+      ]
+    },
+    {
+      "tag": "guitar",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Rob Scallon"
+      ]
+    },
+    {
+      "tag": "youtube",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Rob Scallon"
+      ]
+    },
+    {
+      "tag": "solo guitar",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Rob Scallon"
+      ]
+    },
+    {
+      "tag": "nu disco",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Tommy Villiers"
+      ]
+    },
+    {
+      "tag": "hardcore acid techno",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "David Harleydson"
+      ]
+    },
+    {
+      "tag": "neo-classical",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Kettel"
+      ]
+    },
+    {
+      "tag": "diy",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Cherry Cheeks"
+      ]
+    },
+    {
+      "tag": "audiobooks",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "zaphyre"
+      ]
+    },
+    {
+      "tag": "breaks",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Lil Kevo 303"
+      ]
+    },
+    {
+      "tag": "vgm",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Lil Kevo 303"
+      ]
+    },
+    {
+      "tag": "atmospheric drum & bass",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "TURQUOISEDEATH"
+      ]
+    },
+    {
+      "tag": "indietronica",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "TURQUOISEDEATH"
+      ]
+    },
+    {
+      "tag": "breakbeats",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "TURQUOISEDEATH"
+      ]
+    },
+    {
+      "tag": "underground rap",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "MC HOLOCAUST"
+      ]
+    },
+    {
+      "tag": "underground hip-hop",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Soulzay"
+      ]
+    },
+    {
+      "tag": "texas",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Soulzay"
+      ]
+    },
+    {
+      "tag": "doomshop",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Soulzay"
+      ]
+    },
+    {
+      "tag": "160 jungle",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "DJ Hybrid"
+      ]
+    },
+    {
+      "tag": "drum & bass drum n' bass jungle",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "DJ Hybrid"
+      ]
+    },
+    {
+      "tag": "montreal",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "CULT MEMBER"
+      ]
+    },
+    {
+      "tag": "surf rock",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "Wavves"
+      ]
+    },
+    {
+      "tag": "ugly pop",
+      "weight": 0.0033,
+      "artistCount": 1,
+      "artists": [
+        "bdrmm"
+      ]
+    }
+  ],
+  "missing": [
+    "УННВ",
+    "The Smiths",
+    "Crypto Order",
+    "kate mobile",
+    "Straw Man Army",
+    "diggidaniel",
+    "god.wifi",
+    "Lady Gaga",
+    "Vanflower",
+    "мс улыбочка",
+    "Uranium Club",
+    "Yung Lean",
+    "Steintor Herrenchor",
+    "Slava KPSS",
+    "Ara",
+    "Sadizm98",
+    "Eagulls",
+    "Dawn Of Humans",
+    "Rudimentary Peni",
+    "Edwin Rosen",
+    "Cherrymoon Trax",
+    "Sienna Sleep",
+    "Jak3 / Trashman",
+    "Grazhdanskaya Oborona",
+    "rainsdeaf",
+    "southstar",
+    "Minimal Violence",
+    "Brothel in Belize",
+    "Dr. Lonnie Smith",
+    "zelye",
+    "DJ これからの緊急災害",
+    "Varg²™",
+    "I Hate Models",
+    "rafo420",
+    "Ushko",
+    "REXANTHONY",
+    "Cosmic Baby",
+    "GoatLord",
+    "Химера",
+    "The Murder City Devils",
+    "Earl Sweatshirt",
+    "86 Mentality",
+    "Faith",
+    "Serenity Pill",
+    "Metaraph",
+    "Paul van Dyk",
+    "Viper Diva",
+    "LXST CXNTURY",
+    "Oldschool Terrorists",
+    "СОЮЗ",
+    "Brendan Yates",
+    "Crystal Castles",
+    "PinkPantheress",
+    "Леонид Котельников",
+    "Планка",
+    "fake_trailers",
+    "Freddie Dredd",
+    "Чугунный Скороход",
+    "Bloodkrow Butcher",
+    "КОЛС",
+    "Oliver Tree",
+    "Led Zeppelin",
+    "Clock Of Time",
+    "Baton Rouge",
+    "Kesha",
+    "Hum",
+    "Kangding Ray",
+    "Lou Donaldson",
+    "Gala",
+    "Molella",
+    "Phil Jay",
+    "Audio Bullys",
+    "Charlie",
+    "Coldreams",
+    "Jamie xx",
+    "Oona Doherty",
+    "LTJ Bukem",
+    "Lexis",
+    "Rupert Parkes",
+    "Stekker",
+    "JMJ",
+    "Flytronix",
+    "Adam F",
+    "Tom & Jerry",
+    "Gag",
+    "Babajaga",
+    "Daedric Chamber",
+    "Fear",
+    "PMS 84",
+    "Reagan Youth",
+    "The Clash",
+    "Les Savy Fav",
+    "makko",
+    "lucidbeatz",
+    "All",
+    "Ginger Sparks",
+    "Nocturnal Blood",
+    "Ayla",
+    "Taucher",
+    "Goblin Soap",
+    "Bad Breeding",
+    "Jensen Interceptor",
+    "BABii",
+    "MilleniumKid",
+    "JBS",
+    "Your Funeral",
+    "Kitchen and the Plastic Spoons",
+    "The Massacred",
+    "SSSS",
+    "Tjade",
+    "Autechre",
+    "Post Regiment",
+    "Passion Pit",
+    "SLAVA MARLOW",
+    "John Coltrane",
+    "upsammy",
+    "Aleksi Perälä",
+    "Royel Otis",
+    "Khiis",
+    "Pełnia",
+    "NUPLASMA DISNEY STORE",
+    "Daniel Caesar",
+    "Voiski",
+    "Hadone",
+    "gio_vor",
+    "Yolk",
+    "Void",
+    "Boy Lucid",
+    "Artemis",
+    "Alpha Tracks",
+    "Daniel Avery",
+    "Maara",
+    "Baby B3ns",
+    "DJ Stingray 313",
+    "RATS IN PARADISE",
+    "DJ Gollum",
+    "State Of Mind",
+    "The Replacements",
+    "Six Foe",
+    "Sex Pistols",
+    "Ramones",
+    "Kurt Vile",
+    "Instru Mentale",
+    "Miltatek",
+    "vyaliyy",
+    "Power From Hell",
+    "henko3000",
+    "Herrmann & Kleine",
+    "Stickoxydal",
+    "Kumo 99",
+    "Stick Men With Ray Guns",
+    "Armagh",
+    "Technotronic",
+    "SOPHIE",
+    "Adderall",
+    "Ignorantes",
+    "Negative Gears",
+    "Mort Garson",
+    "Perverts Again",
+    "Mad are Sane",
+    "KNOWSO",
+    "Wovenhand",
+    "Черный Лукич",
+    "ОЖОГ",
+    "Hope D",
+    "Closet Christ",
+    "Oneohtrix Point Never",
+    "Speaker Knockerz",
+    "Waqs",
+    "Komety",
+    "Stanislav Tolkachev",
+    "Fred again..",
+    "Swedish House Mafia",
+    "Future",
+    "Eliza Rose",
+    "Interplanetary Criminal",
+    "Psychic TV",
+    "Orbital",
+    "Quirke",
+    "Poison Idea",
+    "Johnnie Frierson",
+    "Lana Del Rey",
+    "sim0ne",
+    "Melo Nada",
+    "SaphireLeFleur",
+    "amore",
+    "Alex Wilcox",
+    "Mystic Inane",
+    "Evian Christ",
+    "Rainer Maria",
+    "The Cyclist",
+    "Лужа",
+    "Krenz",
+    "Borys Laxity",
+    "Chrome",
+    "Karate",
+    "Депутат Балтики",
+    "Zamay",
+    "Carissa's Wierd",
+    "lauenburg",
+    "A$AP Rocky",
+    "Richard Hell",
+    "Ecco2k",
+    "Conflict",
+    "The Men",
+    "Sam Quealy",
+    "New Order",
+    "Ekman",
+    "Vereker",
+    "jockii druce",
+    "The Fall",
+    "The Combat Zone",
+    "God",
+    "Green Beret",
+    "Amebix",
+    "Seelenkodex",
+    "ZULI",
+    "Scally Milano",
+    "uglystephan",
+    "Nuclear Hyde",
+    "Cores",
+    "Ellie-May Robertson",
+    "Videoclub",
+    "Adèle Castillon",
+    "Mattyeux",
+    "DuMonde",
+    "Santoshi",
+    "Closed Tear",
+    "Abstieg",
+    ":(",
+    "The Drin",
+    "Supermode",
+    "Maddix",
+    "LIIEK",
+    "Le Tigre",
+    "Deeper",
+    "Jealous",
+    "Fatamorgana",
+    "Bracco",
+    "Natural Man Band",
+    "KletTtermax",
+    "Порез на Собаке",
+    "DJ Worm",
+    "De Ambassade",
+    "rl1805",
+    "Der Moderne Man",
+    "Полумягкие",
+    "Варя Крошка",
+    "Пластелиновый Гэри",
+    "Арт",
+    "Бухенвальд флава",
+    "Sasha Skul",
+    "Metox",
+    "Gruppo Folk Internazionale '75-'79",
+    "Sea Power",
+    "Science Man",
+    "L.O.T.I.O.N. Multinational Corporation",
+    "Ice Mc",
+    "Watumusique",
+    "Offermose",
+    "Actually, I'm a Ghost",
+    "Маразм Аркадия",
+    "Computer Magic",
+    "yef",
+    "the coneheads",
+    "Soren Jahan",
+    "Basic Channel",
+    "NPX O.G.",
+    "Souqween",
+    "Domo Genesis",
+    "Mirèle",
+    "Semantix",
+    "Solarstone",
+    "Solee",
+    "BULLDOZER",
+    "DR. Dope",
+    "Antent",
+    "Technokool",
+    "Kineta",
+    "Terrorfakt",
+    "Abr.",
+    "Sandrøse",
+    "Post Teens",
+    "Flansie",
+    "Dödshjälp, fd. Hedebyborna",
+    "Darktek",
+    "Lacquer",
+    "Delroy Edwards",
+    "ATB",
+    "Edward Maya",
+    "Vika Jigulina",
+    "Sharon Den Adel",
+    "Legend",
+    "Mr. Fingers",
+    "TELESHOP",
+    "A Place To Bury Strangers",
+    "Alias",
+    "Algebra Mothers",
+    "Fuffifufzich",
+    "Protex",
+    "Lola Young",
+    "Reece Cox",
+    "Paysage D'Hiver",
+    "Grand V",
+    "Poison Ruïn",
+    "Burzum",
+    "Hesed",
+    "Schleimer K",
+    "Duval Timothy",
+    "Ludovico Einaudi",
+    "Alena Cherny",
+    "Argon X",
+    "Unknown Control",
+    "Omnicron",
+    "Ozaka Oz",
+    "Big Drill Car",
+    "Taqbir",
+    "Dj Warzone",
+    "KnightVision",
+    "Sleep Party People",
+    "LOVV66",
+    "Emmanuel Top",
+    "Creta Kano",
+    "Pussy Riot",
+    "#ff85f7",
+    "Jawbreaker",
+    "Sg Lily",
+    "Buzz & Ace",
+    "cygan9",
+    "Boy Harsher",
+    "Gouryella",
+    "Acrid Abeyance",
+    "Tons Of Tones",
+    "Domenique Dumont",
+    "Bootlicker",
+    "Tommy Holohan",
+    "Stevie Nicks",
+    "Moisk",
+    "Alien Factory",
+    "višniovy tort",
+    "Hugh Masekela",
+    "Son Lux",
+    "Omon Breaker",
+    "FOLTA wax",
+    "The For Carnation",
+    "The Cry",
+    "Voight Kampff",
+    "Dan Zamani",
+    "The Pump Panel",
+    "Tim Taylor (Missile Records)",
+    "Goreshit",
+    "Yung Hurn",
+    "BBY GOYARD",
+    "Electric Youth",
+    "jcherry",
+    "DV-i",
+    "Ritualz",
+    "Jordon Alexander",
+    "ASTORGA",
+    "Hybral",
+    "Tweaker-229",
+    "Draag",
+    "The Chemical Brothers",
+    "Raär",
+    "VTSS",
+    "Indecorum",
+    "Soft Blade",
+    "Rick Wakeman",
+    "Mathis Ruffing",
+    "Leeloo Hardcoholics",
+    "D.Dan",
+    "kitty ray",
+    "Damn Whøre",
+    "Yokai",
+    "AL-90",
+    "Obernauer",
+    "Flawless Issues",
+    "DJ Headwound",
+    "TORIENA",
+    "телеэкран",
+    "Violent Femmes",
+    "небо над головой",
+    "наверное радость",
+    "The Repos",
+    "ÅMRTÜM",
+    "Finale",
+    "Windowshopping",
+    "Daughter Bat & the Lip Stings",
+    "Boys Hotel",
+    "Phantasia",
+    "SAGEISKAMI",
+    "The Brian Jonestown Massacre",
+    "Spiritualized",
+    "Kay Cee",
+    "Kingpin Skinny Pimp",
+    "Tatli",
+    "Skin On Skin",
+    "kemt",
+    "Vortek's",
+    "Antonio Ruscito",
+    "TOMÓRROW",
+    "Husky",
+    "maslo chernogo tmina",
+    "Siuzanna",
+    "Kaizo Slumber",
+    "Nasenbluten",
+    "MIMIDEATH",
+    "Panphage",
+    "Sore Throat",
+    "Lab-E",
+    "X-Treme",
+    "Al Core",
+    "Ruffneck",
+    "DJ Ruffneck",
+    "Outrage",
+    "Rotterdam Termination Source",
+    "Humour",
+    "OTTO",
+    "Birds in Row",
+    "Mikael Tariverdiev",
+    "EKKSTACY",
+    "Icons Of Filth",
+    "KIDS SEE GHOSTS",
+    "Sugar",
+    "Sexdrome",
+    "Sad Lovers & Giants",
+    "Andy Stott",
+    "Wulkanaz",
+    "Tiny Moving Parts",
+    "Forgotten Woods",
+    "piri",
+    "piri & tommy",
+    "Stradcopy",
+    "µ-Ziq",
+    "Branikald",
+    "dj-112",
+    "Dr. Peacock",
+    "N-Vitral",
+    "Robert Smith",
+    "Vandal",
+    "Mandidextrous",
+    "Ketamane",
+    "Rihanna",
+    "Calvin Harris",
+    "AFX",
+    "Kate Bush",
+    "The Prodigy",
+    "Sharon Lynn Makarenko",
+    "Ceephax Acid Crew",
+    "Wachita China",
+    "10cc",
+    "Thundercat",
+    "CLAMM",
+    "El Guincho",
+    "WILLOW",
+    "Jonny L",
+    "Carpenter Brut",
+    "Nhato",
+    "Chat Pile",
+    "Cherry (UA)",
+    "Xxtarlit⚸",
+    "Ежемесячные",
+    "Eyedress",
+    "7oh2",
+    "Trippjones",
+    "Doddy Gatz",
+    "Dizzy",
+    "Datach'i",
+    "Vierre Cloud",
+    "Casper Mcfadden",
+    "DJ CAMGIRL",
+    "La Dispute",
+    "Blksmiith",
+    "AM/WAS",
+    "Black Kray",
+    "M!R!M",
+    "Kat Day",
+    "Mamman Sani",
+    "Wax Doctor",
+    "BICEP",
+    "Devil Master",
+    "Far Apart",
+    "Белый Китаец",
+    "Groo Morbær",
+    "Wombo",
+    "Chillman",
+    "Gosti iz Budushchego",
+    "Karin Ann",
+    "BAMBARA",
+    "Woods of Desolation",
+    "An Autumn for Crippled Children",
+    "Brain Tourniquet",
+    "aya",
+    "Yves Tumor",
+    "Shinsei Kamattechan",
+    "Sheer Mag",
+    "cccp edits",
+    "Armor",
+    "Grimes",
+    "Цена Смеха",
+    "Forest Swords",
+    "Lil Peep",
+    "Егор и Опизденевшие",
+    "Tormentor",
+    "The Cure",
+    "Poemme"
+  ]
+}
