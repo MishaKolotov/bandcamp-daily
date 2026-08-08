@@ -1,5 +1,608 @@
 {
-  "pending": [],
+  "pending": [
+    {
+      "bucket": "hardcore-punk",
+      "messageId": 22,
+      "hasPhoto": true,
+      "candidate": {
+        "itemId": 1872676028,
+        "url": "https://rarevitaminrecords.bandcamp.com/album/are-we-cool",
+        "title": "Are We Cool?",
+        "artist": "Jimmy Dammage",
+        "label": "Rare Vitamin Records",
+        "tags": [
+          "rock",
+          "garage punk",
+          "hardcore punk",
+          "post-punk",
+          "psychedelic rock",
+          "punk",
+          "northwich"
+        ],
+        "releasedAt": "2026-08-03",
+        "artUrl": "https://f4.bcbits.com/img/a1489167917_10.jpg",
+        "alsoCollected": 0,
+        "origin": "fresh"
+      },
+      "matchedTags": [
+        "post-punk",
+        "d-beat",
+        "crust",
+        "crust",
+        "hardcore",
+        "punk",
+        "metal punk",
+        "crust punk",
+        "crustpunk",
+        "dbeatrawpunk"
+      ],
+      "alternatives": []
+    },
+    {
+      "bucket": "crust",
+      "messageId": 25,
+      "hasPhoto": true,
+      "candidate": {
+        "itemId": 95467812,
+        "url": "https://flagelacion999.bandcamp.com/album/s-t",
+        "title": "S/T",
+        "artist": "Flagelación",
+        "label": "Flagelacion",
+        "tags": [
+          "punk",
+          "dbeat",
+          "grindcore",
+          "powerviolence",
+          "rawpunk",
+          "bogotá"
+        ],
+        "releasedAt": "2026-07-31",
+        "artUrl": "https://f4.bcbits.com/img/a4206602820_10.jpg",
+        "alsoCollected": 0,
+        "origin": "fresh"
+      },
+      "matchedTags": [
+        "rawpunk",
+        "dbeat",
+        "punk",
+        "grindcore"
+      ],
+      "alternatives": [
+        {
+          "itemId": 1529988234,
+          "url": "https://disinfect1.bandcamp.com/album/21st-century-holocaust",
+          "title": "21st Century Holocaust",
+          "artist": "Disinfect",
+          "label": null,
+          "tags": [
+            "punk",
+            "crust punk",
+            "dbeat",
+            "dbeatrawpunk",
+            "noisecore",
+            "stoke on trent"
+          ],
+          "releasedAt": "2026-08-01",
+          "artUrl": "https://f4.bcbits.com/img/a0346470113_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        },
+        {
+          "itemId": 1840584992,
+          "url": "https://noiseitch.bandcamp.com/album/dispose-disappoint-split",
+          "title": "Dispose / Disappoint split",
+          "artist": "Dispose / Disappoint",
+          "label": "Noise Itch Cassettes",
+          "tags": [
+            "finnland",
+            "punk",
+            "sweden",
+            "d-beat",
+            "rawpunk",
+            "berlin"
+          ],
+          "releasedAt": "2026-08-05",
+          "artUrl": "https://f4.bcbits.com/img/a1441140765_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        },
+        {
+          "itemId": 916712559,
+          "url": "https://ironbloodrex.bandcamp.com/album/fear-control-no-way-out-ep",
+          "title": "Fear Control/No Way Out EP",
+          "artist": "Mussö",
+          "label": "Iron Blood Rex",
+          "tags": [
+            "punk",
+            "d-beat",
+            "d-beat raw punk",
+            "jakarta",
+            "mussö",
+            "raw punk",
+            "indonesia"
+          ],
+          "releasedAt": "2026-08-01",
+          "artUrl": "https://f4.bcbits.com/img/a0512586656_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        }
+      ]
+    },
+    {
+      "bucket": "crust",
+      "messageId": 26,
+      "hasPhoto": true,
+      "candidate": {
+        "itemId": 6793994557528347,
+        "url": "https://golpepunx.bandcamp.com/album/assuefazione-quotidiana",
+        "title": "Assuefazione Quotidiana",
+        "artist": "GOLPE",
+        "label": null,
+        "tags": [
+          "italian punk",
+          "italian hardcore",
+          "punk",
+          "d-beat",
+          "hardcore",
+          "hardcore punk",
+          "raw punk",
+          "milan"
+        ],
+        "releasedAt": "2023-10-13",
+        "artUrl": "https://f4.bcbits.com/img/a0259027721_10.jpg",
+        "alsoCollected": 0,
+        "origin": "archive",
+        "neighborWeight": 0.2946
+      },
+      "matchedTags": [
+        "raw punk",
+        "d-beat",
+        "punk",
+        "hardcore punk"
+      ],
+      "alternatives": [
+        {
+          "itemId": 8738318457941163,
+          "url": "https://notfortheweakrecords.bandcamp.com/album/a-fragmented-truth",
+          "title": "A Fragmented Truth",
+          "artist": "Yellowcake",
+          "label": "Not For The Weak Records",
+          "tags": [
+            "punk",
+            "d-beat",
+            "hardcore punk",
+            "punk hardcore",
+            "norfolk"
+          ],
+          "releasedAt": "2024-09-20",
+          "artUrl": "https://f4.bcbits.com/img/a3835159018_10.jpg",
+          "alsoCollected": 0,
+          "origin": "archive",
+          "neighborWeight": 0.2982
+        },
+        {
+          "itemId": 744465062282624,
+          "url": "https://whosereality.bandcamp.com/album/demo-cs",
+          "title": "Demo CS",
+          "artist": "Whose Reality?",
+          "label": null,
+          "tags": [
+            "punk",
+            "d-beat",
+            "hardcore punk",
+            "melbourne"
+          ],
+          "releasedAt": "2025-08-22",
+          "artUrl": "https://f4.bcbits.com/img/a1973810893_10.jpg",
+          "alsoCollected": 0,
+          "origin": "archive",
+          "neighborWeight": 0.3643
+        }
+      ]
+    },
+    {
+      "bucket": "death-metal",
+      "messageId": 27,
+      "hasPhoto": true,
+      "candidate": {
+        "itemId": 4179561748,
+        "url": "https://amputationberlin.bandcamp.com/album/mutilated-pest",
+        "title": "MUTILATED PEST",
+        "artist": "AMPUTATION",
+        "label": null,
+        "tags": [
+          "death metal",
+          "metal",
+          "death metal old school",
+          "deathmetal",
+          "old school death metal",
+          "berlin"
+        ],
+        "releasedAt": "2026-08-07",
+        "artUrl": "https://f4.bcbits.com/img/a2870256382_10.jpg",
+        "alsoCollected": 0,
+        "origin": "fresh"
+      },
+      "matchedTags": [
+        "metal",
+        "death metal",
+        "deathmetal",
+        "old school death metal"
+      ],
+      "alternatives": [
+        {
+          "itemId": 2267615344,
+          "url": "https://personal-records.bandcamp.com/album/grimshrine",
+          "title": "Grimshrine",
+          "artist": "Personal Records",
+          "label": null,
+          "tags": [
+            "death metal",
+            "metal",
+            "mexican death metal",
+            "old school death metal",
+            "santiago de querétaro"
+          ],
+          "releasedAt": "2026-09-04",
+          "artUrl": "https://f4.bcbits.com/img/a4193931244_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        },
+        {
+          "itemId": 485553516,
+          "url": "https://scatteredremnants.bandcamp.com/album/destined-to-fail-2026",
+          "title": "Destined to Fail (2026)",
+          "artist": "Scattered Remnants",
+          "label": null,
+          "tags": [
+            "90's death metal",
+            "brutal death metal.",
+            "death metal",
+            "metal",
+            "old school death metal",
+            "us death metal",
+            "slamming brutal death",
+            "slamming brutal death metal",
+            "fitchburg"
+          ],
+          "releasedAt": "2026-07-31",
+          "artUrl": "https://f4.bcbits.com/img/a3475753348_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        },
+        {
+          "itemId": 360930168,
+          "url": "https://studios13.bandcamp.com/album/legion-of-the-silent-butchers",
+          "title": "Legion of the Silent Butchers",
+          "artist": "Vehemence Abyss",
+          "label": "Supergoat Wreck-Whordes / Studios13",
+          "tags": [
+            "black metal",
+            "death metal",
+            "melkor",
+            "metal",
+            "portugal metal",
+            "studios13",
+            "blackmetal",
+            "doom metal",
+            "solo artist",
+            "underground",
+            "portugal"
+          ],
+          "releasedAt": "2026-08-01",
+          "artUrl": "https://f4.bcbits.com/img/a1315050591_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        }
+      ]
+    },
+    {
+      "bucket": "hardcore-punk",
+      "messageId": 28,
+      "hasPhoto": true,
+      "candidate": {
+        "itemId": 4049376135,
+        "url": "https://100blumen.bandcamp.com/album/fortuna-gives-me-wood",
+        "title": "FORTUNA GIVES ME WOOD",
+        "artist": "100blumen",
+        "label": null,
+        "tags": [
+          "punk",
+          "crust punk",
+          "experimental electronic",
+          "grindcore.",
+          "post-punk",
+          "punk hardcore",
+          "düsseldorf"
+        ],
+        "releasedAt": "2026-08-06",
+        "artUrl": "https://f4.bcbits.com/img/a2682612252_10.jpg",
+        "alsoCollected": 0,
+        "origin": "fresh"
+      },
+      "matchedTags": [
+        "post-punk",
+        "punk hardcore",
+        "punk",
+        "crust punk"
+      ],
+      "alternatives": [
+        {
+          "itemId": 3925052259,
+          "url": "https://rarevitaminrecords.bandcamp.com/album/live-the-salty-dog-2507-26",
+          "title": "Live @ The Salty Dog 25.07/26",
+          "artist": "Jimmy Dammage",
+          "label": "Rare Vitamin Records",
+          "tags": [
+            "rock",
+            "garage punk",
+            "hardcore punk",
+            "post-punk",
+            "psychedelic rock",
+            "punk",
+            "northwich"
+          ],
+          "releasedAt": "2026-08-03",
+          "artUrl": "https://f4.bcbits.com/img/a1413482766_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        },
+        {
+          "itemId": 3333304112,
+          "url": "https://nothingthrives.bandcamp.com/album/nothing-thrives-live-in-kalamata",
+          "title": "Nothing Thrives - Live in Kalamata",
+          "artist": "Nothing Thrives",
+          "label": null,
+          "tags": [
+            "punk",
+            "rock",
+            "rock & roll",
+            "action rock",
+            "athens",
+            "garage punk",
+            "hardcore punk",
+            "punk rock",
+            "rock and roll",
+            "athens"
+          ],
+          "releasedAt": "2026-08-03",
+          "artUrl": "https://f4.bcbits.com/img/a0001402604_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        },
+        {
+          "itemId": 1673042047,
+          "url": "https://nofusstapes.bandcamp.com/album/baby-killer-demo",
+          "title": "BABY KILLER - Demo",
+          "artist": "BABY KILLER",
+          "label": "NO FUSS TAPES",
+          "tags": [
+            "oi!",
+            "punk",
+            "hardcore",
+            "hardcore punk",
+            "negative approach",
+            "post-punk",
+            "vienna"
+          ],
+          "releasedAt": "2026-08-20",
+          "artUrl": "https://f4.bcbits.com/img/a0134895002_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        }
+      ]
+    },
+    {
+      "bucket": "hardcore-punk",
+      "messageId": 29,
+      "hasPhoto": true,
+      "candidate": {
+        "itemId": 1765731126516362,
+        "url": "https://stuccolabel.bandcamp.com/album/delusion-2",
+        "title": "Delusion",
+        "artist": "FUGITIVE BUBBLE",
+        "label": "Stucco",
+        "tags": [
+          "rock",
+          "art punk",
+          "bumpkin d-beat",
+          "hardcore",
+          "hardcore punk",
+          "olympia",
+          "post-punk",
+          "punk",
+          "punk rock",
+          "skewed n' skitzed",
+          "austin"
+        ],
+        "releasedAt": "2023-03-20",
+        "artUrl": "https://f4.bcbits.com/img/a1231075833_10.jpg",
+        "alsoCollected": 0,
+        "origin": "archive",
+        "neighborWeight": 0.3221
+      },
+      "matchedTags": [
+        "post-punk",
+        "hardcore",
+        "hardcore punk",
+        "punk",
+        "punk rock"
+      ],
+      "alternatives": [
+        {
+          "itemId": 2648595159971844,
+          "url": "https://classactz.bandcamp.com/album/malaise-2",
+          "title": "MALAISE",
+          "artist": "Class Act",
+          "label": null,
+          "tags": [
+            "kcmo",
+            "punk",
+            "hardcore",
+            "hardcore punk",
+            "post-punk",
+            "kansas city"
+          ],
+          "releasedAt": "2025-07-25",
+          "artUrl": "https://f4.bcbits.com/img/a3248697287_10.jpg",
+          "alsoCollected": 0,
+          "origin": "archive",
+          "neighborWeight": 0.3288
+        },
+        {
+          "itemId": 6391521966513717,
+          "url": "https://bellicoserecords.bandcamp.com/album/5-finger-discount-up-the-east-coast",
+          "title": "5 Finger Discount Up the East Coast",
+          "artist": "COFFEE STAIN",
+          "label": "BELLICOSE RECORDS",
+          "tags": [
+            "duval county",
+            "punk",
+            "coffee",
+            "diy",
+            "egg punk",
+            "experimental",
+            "florida hardcore",
+            "hardcore",
+            "hardcore punk",
+            "jacksonville",
+            "punk rock",
+            "florida"
+          ],
+          "releasedAt": "2024-05-10",
+          "artUrl": "https://f4.bcbits.com/img/a4104059800_10.jpg",
+          "alsoCollected": 0,
+          "origin": "archive",
+          "neighborWeight": 0.348
+        },
+        {
+          "itemId": 6202793497839352,
+          "url": "https://dollhousenyc.bandcamp.com/album/the-first-day-of-spring",
+          "title": "The First Day of Spring",
+          "artist": "DOLLHOUSE",
+          "label": null,
+          "tags": [
+            "nyc punk",
+            "punk",
+            "hardcore punk",
+            "post-punk",
+            "toxic state records",
+            "new york"
+          ],
+          "releasedAt": "2021-03-22",
+          "artUrl": "https://f4.bcbits.com/img/a0572976664_10.jpg",
+          "alsoCollected": 0,
+          "origin": "archive",
+          "neighborWeight": 0.3027
+        }
+      ]
+    },
+    {
+      "bucket": "black-metal",
+      "messageId": 30,
+      "hasPhoto": true,
+      "candidate": {
+        "itemId": 1924919266,
+        "url": "https://tir-na-nog-productions.bandcamp.com/album/n-w",
+        "title": "Nów",
+        "artist": "Stary Miesiac",
+        "label": "Tir Na Nog Production",
+        "tags": [
+          "black metal",
+          "metal",
+          "old school dungeon synth",
+          "poland",
+          "raw black metal",
+          "comfy synth",
+          "dark ambient",
+          "dungeon synth",
+          "fantasy synth",
+          "medieval folk",
+          "germany"
+        ],
+        "releasedAt": "2026-08-02",
+        "artUrl": "https://f4.bcbits.com/img/a4048449392_10.jpg",
+        "alsoCollected": 0,
+        "origin": "fresh"
+      },
+      "matchedTags": [
+        "metal",
+        "dungeon synth",
+        "black metal",
+        "raw black metal",
+        "comfy synth",
+        "dark ambient"
+      ],
+      "alternatives": [
+        {
+          "itemId": 2154870638,
+          "url": "https://hellwehrwolf.bandcamp.com/album/a-tale-of-magic-bloodshed-necromancy",
+          "title": "A Tale of Magic, Bloodshed & Necromancy",
+          "artist": "Hell Wehrwolf",
+          "label": null,
+          "tags": [
+            "black metal",
+            "metal",
+            "raw black metal",
+            "dungeon synth",
+            "russia"
+          ],
+          "releasedAt": "2026-08-05",
+          "artUrl": "https://f4.bcbits.com/img/a2255722602_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        },
+        {
+          "itemId": 2689468961,
+          "url": "https://magelord.bandcamp.com/album/the-black-spell-of-nazgaroth-demo-2023",
+          "title": "The Black Spell of Nazgaroth (Demo 2023)",
+          "artist": "Mage Lord",
+          "label": null,
+          "tags": [
+            "ambient",
+            "black metal",
+            "old school dungeon synth",
+            "atmospheric",
+            "black dungeon synth",
+            "black metal ambient",
+            "dark ambient",
+            "demo",
+            "dungeon noise",
+            "dungeon synth",
+            "electronic",
+            "fantasy synth",
+            "medieval ambient",
+            "metal",
+            "raw dungeon synth",
+            "costa rica"
+          ],
+          "releasedAt": "2026-08-13",
+          "artUrl": "https://f4.bcbits.com/img/a3487839274_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        },
+        {
+          "itemId": 3258059492,
+          "url": "https://coffinchainproductions.bandcamp.com/album/blattzeit-s-t",
+          "title": "Blattzeit S/T",
+          "artist": "Blattzeit",
+          "label": "Coffin Chain Productions",
+          "tags": [
+            "black metal",
+            "metal",
+            "raw black metal",
+            "dungeon synth",
+            "vampyric black metal",
+            "london"
+          ],
+          "releasedAt": "2026-08-05",
+          "artUrl": "https://f4.bcbits.com/img/a3383567817_10.jpg",
+          "alsoCollected": 0,
+          "origin": "fresh"
+        }
+      ]
+    }
+  ],
   "posted": [
     {
       "itemId": 5373384218880546,
@@ -64,6 +667,38 @@
       "title": "Sin Servicio",
       "artist": "Sobra",
       "postedAt": "2026-08-04"
+    },
+    {
+      "itemId": 2478721580843175,
+      "bucket": "crust",
+      "url": "https://zyclone.bandcamp.com/album/visions-of-impending-death",
+      "title": "Visions of Impending Death",
+      "artist": "Zyclone",
+      "postedAt": "2026-08-05"
+    },
+    {
+      "itemId": 2706938959,
+      "bucket": "death-metal",
+      "url": "https://horrifiermetal.bandcamp.com/album/revelations-of-gore",
+      "title": "Revelations of Gore",
+      "artist": "Horrifier",
+      "postedAt": "2026-08-05"
+    },
+    {
+      "itemId": 1748195014580694,
+      "bucket": "hardcore-punk",
+      "url": "https://stuccolabel.bandcamp.com/album/excess-blood",
+      "title": "Excess Blood",
+      "artist": "EXCESS BLOOD",
+      "postedAt": "2026-08-05"
+    },
+    {
+      "itemId": 2137810366,
+      "bucket": "black-metal",
+      "url": "https://wealdknight.bandcamp.com/album/across-the-moor",
+      "title": "Across the Moor",
+      "artist": "Weald Knight",
+      "postedAt": "2026-08-05"
     }
   ],
   "feedbackTags": {
@@ -106,7 +741,23 @@
     "https://thegrassgardenjphc.bandcamp.com/album/the-grass-garden",
     "https://nostalgiarecord2.bandcamp.com/album/leyendas-de-kuskatan",
     "https://yellowcakephx.bandcamp.com/album/can-you-see-the-future",
-    "https://sobradelaspeores.bandcamp.com/album/sin-servicio"
+    "https://sobradelaspeores.bandcamp.com/album/sin-servicio",
+    "https://agipunkrecords.bandcamp.com/album/ag158-death-gasp-s-t",
+    "https://agipunkrecords.bandcamp.com/album/ag157-voltage-s-t",
+    "https://sprangdavaltarmar.bandcamp.com/album/ruttna-demos-epn",
+    "https://absolutnoise.bandcamp.com/album/deafen-and-disarm-2026-split-w-destruct",
+    "https://ragdollrecords.bandcamp.com/album/tape-2",
+    "https://11pmrecords.bandcamp.com/album/warheads-on-foreheads",
+    "https://flowernewyorkcity.bandcamp.com/album/hardly-a-dream",
+    "https://zyclone.bandcamp.com/album/visions-of-impending-death",
+    "https://miscreation.bandcamp.com/album/miscreation",
+    "https://ritualgrief.bandcamp.com/album/vae-victis",
+    "https://deathmetalpromotion.bandcamp.com/album/death-metal-tribute-to-ozzy",
+    "https://horrifiermetal.bandcamp.com/album/revelations-of-gore",
+    "https://curaab.bandcamp.com/album/to-the-end-of-suffering",
+    "https://alloutattak.bandcamp.com/album/split-w-trigger-damage",
+    "https://stuccolabel.bandcamp.com/album/excess-blood",
+    "https://wealdknight.bandcamp.com/album/across-the-moor"
   ],
-  "lastUpdateId": 910432851
+  "lastUpdateId": 910432868
 }
