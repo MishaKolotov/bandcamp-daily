@@ -1,18 +1,17 @@
-import type { BucketId, Candidate } from '../bandcamp/types.ts';
-import { BUCKETS, orderSeedTagsBySpecificity, type BucketDef } from '../profile/buckets.ts';
+import { BUCKETS, orderSeedTagsBySpecificity } from '../profile/buckets.ts';
 import type { BucketProfile, Profile } from '../profile/build.ts';
 import { canonicalizeTag } from '../lib/tags.ts';
 import type { Neighbor } from './neighbors.ts';
 import { freshCandidates, type FreshDeps } from './fresh.ts';
 import { archiveCandidates, type ArchiveDeps } from './archive.ts';
-import { selectForBucket, type BucketSelection } from './select.ts';
+import { pickBest, type BucketInput } from './pick.ts';
 import { buildCard, type Card } from '../telegram/card.ts';
 import {
   handleUpdates,
+  rememberSeen,
   type ApproveDeps,
   type ApproveState,
   type CardEdit,
-  type PendingCard,
 } from '../telegram/approve.ts';
 import type { InlineKeyboard, TelegramUpdate } from '../telegram/api.ts';
 
@@ -24,7 +23,7 @@ import type { InlineKeyboard, TelegramUpdate } from '../telegram/api.ts';
  * hardcore-punk хаб-теги `post-punk, d-beat, primative, crust` — ни одного
  * панк/хардкор-тега, потому что все четыре его опорных тега, переживших
  * порог, сидят ровно на 0.5, а четыре производных тега обогнали их весом
- * от 0.79 до 1. В результате дневной поиск по каналу hardcore-punk ни разу
+ * от 0.79 до 1. В результате дневной поиск по бакету hardcore-punk ни разу
  * не запрашивает хаб самого хардкора — новая группа жанра, ещё не
  * попавшая в подписки, эффективно никогда не всплывёт.
  *
@@ -41,7 +40,7 @@ import type { InlineKeyboard, TelegramUpdate } from '../telegram/api.ts';
  * — top производных тегов профиля по весу. Производные теги не бесполезны:
  * это то, как бакет находит смежные сцены, которые владельцу реально
  * нравятся (соседние поджанры, тусовки лейблов), и вытеснять их совсем в
- * пользу seed-тегов значило бы вернуть канал к чистому поиску по жанровому
+ * пользу seed-тегов значило бы вернуть бакет к чистому поиску по жанровому
  * ярлыку, без открытия соседнего. Резерв — гарантия нижней границы для
  * своего жанра, а не запрет на производные: если seed-тегов у бакета
  * меньше, чем зарезервированные слоты, лишние слоты достаются производным
@@ -88,35 +87,6 @@ export function hubTagsForBucket(
   return combined;
 }
 
-/**
- * Что сказать владельцу, если у бакета сегодня нет ни одной карточки —
- * ни свежей, ни архивной. `selectForBucket` различает "нечего было
- * предложить" (пул пуст на входе: подписки/хаб не выдали ничего, или
- * архивный пул для прогона уже пуст) от "предлагали, но не подошло"
- * (профиль отбраковал скорингом, или всё уже показывалось) — молчание
- * подменило бы эти два случая одним и тем же пустым результатом, а они
- * требуют разной реакции владельца: первое обычное и ожидаемое, второе
- * стоит заметить (профиль мог перетянуть стоп-теги, или день оказался
- * из ряда вон скудным).
- *
- * Если хотя бы один из двух пулов дал карточку — бакет НЕ молчит (карточка
- * сама по себе уже сообщение), и здесь возвращается null: отдельная
- * заметка "второй пул сегодня пуст" ничего не добавляет, кроме шума на
- * ровном месте — так бывает почти каждый день у архива или у свежака.
- */
-export function bucketEmptyMessage(bucket: BucketDef, selection: BucketSelection): string | null {
-  if (selection.fresh.status === 'picked' || selection.archive.status === 'picked') return null;
-  const describe = (label: string, outcome: BucketSelection['fresh']): string =>
-    outcome.status === 'not-offered'
-      ? `${label}: сегодня нечего было предложить`
-      : `${label}: кандидаты были, но профиль отбраковал всё`;
-  return [
-    `${bucket.channelTitle}: сегодня без карточек.`,
-    describe('свежак', selection.fresh),
-    describe('архив', selection.archive),
-  ].join('\n');
-}
-
 /** Минимальный срез Telegram-клиента, который умеет редактировать уже отправленное сообщение. */
 export interface EditableTelegram {
   editMessageCaption(payload: {
@@ -140,10 +110,10 @@ export interface EditableTelegram {
  * отправлена изначально (`edit.hasPhoto`), а НЕ по тому, есть ли обложка у
  * кандидата, который в карточке показан сейчас: Telegram не даёт превратить
  * фото-сообщение в текстовое при редактировании и наоборот (см. комментарий
- * у `PendingCard.hasPhoto` в `../telegram/approve.ts`). Используется и для
- * `replaceCard` (подмена кандидата, клавиатура жива), и для `closeCard`
- * (финализация, клавиатура снята) — `approve.ts` уже собирает нужный вариант
- * `CardEdit` под оба случая, этой функции всё равно, зовут её откуда.
+ * у `PendingCard.hasPhoto` в `../telegram/approve.ts`). Нужна ровно одному
+ * сценарию — `replaceCard`, подмене кандидата кнопкой «другой», где карточка
+ * остаётся жить с активными кнопками. Разобранные карточки не редактируются,
+ * а удаляются (`deleteCard`).
  */
 export function editCard(
   telegram: EditableTelegram,
@@ -168,13 +138,8 @@ export function editCard(
 }
 
 /**
- * Пять переменных окружения, без которых прогон не имеет смысла: токен
- * бота, чат владельца и по одному chat_id канала на каждый бакет из
- * `BUCKETS` (см. `../profile/buckets.ts` — сейчас их четыре, включая
- * `black-metal`/`BLACK_METAL_CHANNEL_ID`, но список читается оттуда, а не
- * дублируется здесь именами). Список собирается generично по `BUCKETS`
- * именно затем, чтобы добавление пятого бакета само по себе расширило
- * список нужных переменных, без правки этой функции.
+ * Две переменные окружения, без которых прогон не имеет смысла: токен бота
+ * и чат владельца.
  *
  * Все отсутствующие переменные собираются в ОДНО сообщение об ошибке, а не
  * бросаются по одной: без этого владелец узнавал бы о недостающих
@@ -188,7 +153,6 @@ export function editCard(
 export interface DailyConfig {
   botToken: string;
   ownerChatId: string;
-  channelIdByBucket: Map<BucketId, string>;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): DailyConfig {
@@ -201,15 +165,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): DailyConfig {
 
   const botToken = read('TELEGRAM_BOT_TOKEN');
   const ownerChatId = read('OWNER_CHAT_ID');
-  const channelIdByBucket = new Map<BucketId, string>();
-  for (const bucket of BUCKETS) {
-    channelIdByBucket.set(bucket.id, read(bucket.channelEnv));
-  }
 
   if (missing.length > 0) {
     throw new Error(`не заданы переменные окружения: ${missing.join(', ')}`);
   }
-  return { botToken, ownerChatId, channelIdByBucket };
+  return { botToken, ownerChatId };
 }
 
 /** Всё, что дневному прогону нужно от сети — Bandcamp и Telegram, — уже за интерфейсом, как и в остальном пайплайне. */
@@ -217,8 +177,6 @@ export interface DailyTelegramDeps extends ApproveDeps {
   getUpdates: (offset: number) => Promise<TelegramUpdate[]>;
   /** Отправляет новую карточку владельцу (sendPhoto или sendMessage — решает вызывающий код по `card.photo`). */
   sendCard: (card: Card) => Promise<{ messageId: number }>;
-  /** Служебное сообщение владельцу вне карточек — например, "у бакета сегодня пусто". */
-  notifyOwner: (text: string) => Promise<void>;
 }
 
 export interface DailyDeps {
@@ -240,32 +198,90 @@ export interface DailyOptions {
   maxFutureDays: number;
   /** Размер общего архивного пула за прогон — генерозный, делится между всеми бакетами скорингом (см. "Решения", п.6). */
   archivePoolLimit: number;
-  /** Запас "другой кандидат" на пул. */
+  /** Запас "другой кандидат" у отправленной карточки — см. `BestPick.alternatives` в `./pick.ts`. */
   alternativesCount: number;
   /** Сколько верхних тегов профиля бакета опрашивать в Discover как хаб-теги. */
   hubTagsPerBucket: number;
-  /** Сколько минут ждать нажатий после отправки карточек, прежде чем выйти. */
+  /** Ниже этого total прогон молчит и не шлёт ничего вовсе. */
+  minTotal: number;
+  /** Сколько минут ждать нажатий после отправки карточки, прежде чем выйти. */
   listenMinutes: number;
 }
 
 /**
- * Дневной прогон: разобрать вчерашние нажатия, собрать сегодняшних
- * кандидатов по четырём бакетам, отправить владельцу карточки, подождать
- * реакции и выйти, оставив состояние на диске.
+ * Сносит из лички карточку прошлого захода, если владелец так и не нажал на
+ * неё за отведённые минуты. Смысл — к моменту отправки сегодняшнего пика в
+ * личке не должно висеть ничего, кроме того, что ещё надо послушать.
+ *
+ * Момент вызова не произволен: строго ПОСЛЕ дренажа вчерашних нажатий (иначе
+ * снесли бы карточку, нажатие по которой ещё лежит в очереди `getUpdates`, и
+ * потеряли бы и само нажатие, и его след в `feedbackTags`) и ДО сбора
+ * сегодняшних кандидатов.
+ *
+ * Показанным (`rememberSeen`) помечается НЕ тот кандидат, что лежит в карточке
+ * на момент сноса, а `shownBeforeRun` — то, что реально висело у владельца
+ * перед этим заходом. Разница не косметическая. Дренаж (шаг 1) мог разобрать
+ * нажатие «Другой», пришедшее уже после выхода прошлого джоба: `handleNext`
+ * пометит показанным старого кандидата (правильно — его владелец видел),
+ * подменит содержимое карточки на альтернативу и оставит её в `pending`. Через
+ * долю секунды эта же карточка сносится здесь — и альтернативу владелец не
+ * увидит ни секунды. Пометить её показанной значило бы выжечь из конечного
+ * пула релиз, которого никто не видел: спека называет истощение пула главным
+ * риском схемы, а тут он тратился бы вхолостую и молча.
+ *
+ * Неудача удаления не фатальна: сообщение мог снести сам владелец руками, а
+ * состояние к этому моменту уже согласовано. Ошибка логируется, прогон идёт
+ * дальше.
+ */
+async function sweepStaleMessages(
+  state: ApproveState,
+  deps: DailyDeps,
+  shownBeforeRun: readonly string[],
+): Promise<void> {
+  const messageIds = state.pending.map((card) => card.messageId);
+  if (messageIds.length === 0) return;
+
+  for (const url of shownBeforeRun) rememberSeen(state, url);
+
+  for (const messageId of messageIds) {
+    try {
+      await deps.telegram.deleteCard(messageId);
+    } catch (error) {
+      console.error(`daily: не удалось снести сообщение ${messageId} из лички`, error);
+    }
+  }
+
+  state.pending = [];
+  await deps.persistState(state);
+}
+
+/**
+ * Заход подборщика: разобрать нажатия с прошлого раза, вычистить личку,
+ * собрать кандидатов по четырём бакетам, отправить владельцу ОДНУ карточку —
+ * лучшую из всех бакетов разом, — подождать реакции и выйти, оставив
+ * состояние на диске.
  *
  * Порядок шагов — не произвольный:
  * 1. Дренаж вчерашнего backlog идёт ПЕРВЫМ и целиком, до единого сетевого
- *    похода за кандидатами: то, что владелец уже разобрал руками (posted/
- *    seen), обязано быть учтено в exclude-множестве, иначе сегодняшний
- *    отбор рискует предложить то же самое повторно под новым messageId.
- * 2. Сбор кандидатов — подписки обходятся ОДИН раз на весь прогон (см.
- *    "Решения, принятые по ходу реализации", п.2), архивный пул тоже
- *    строится один раз с запасом и делится между бакетами скорингом
- *    (п.6). Ошибка сбора одного бакета (сеть, discover) не должна ронять
- *    остальные три — ловится и логируется точечно, прогон идёт дальше.
- * 3. Отправка карточек — сразу после каждой успешной отправки состояние
- *    персистится: убитый посреди дня джоб не должен ни потерять уже
- *    отправленные карточки из pending, ни отправить их повторно завтра.
+ *    похода за кандидатами: то, что владелец уже разобрал руками (seen),
+ *    обязано быть учтено в exclude-множестве, иначе сегодняшний отбор
+ *    рискует предложить то же самое повторно под новым messageId.
+ * 1b. Подчистка хвостов (`sweepStaleMessages`) — сразу после дренажа, чтобы
+ *    сегодняшняя карточка легла в пустую личку.
+ * 2. Сбор кандидатов и ОДИН пик. Бакеты здесь — уже не четыре независимых
+ *    отбора (каналов, под которые они заводились, больше нет), а всего лишь
+ *    четыре способа набрать кандидатов и четыре набора весов, которыми их
+ *    скорить: собранное отдаётся в `pickBest` (`./pick.ts`) одним куском, и
+ *    победитель ровно один на весь заход — либо ни одного, если даже лучший
+ *    не дотянул до `options.minTotal`, и тогда заход молчит. Подписки
+ *    обходятся ОДИН раз на весь прогон (см. "Решения, принятые по ходу
+ *    реализации", п.2), архивный пул тоже строится один раз с запасом и
+ *    делится между бакетами скорингом (п.6). Ошибка сбора одного бакета
+ *    (сеть, discover) не должна ронять остальные три — ловится и логируется
+ *    точечно, прогон идёт дальше с тем, что успело собраться.
+ * 3. Отправка карточки — сразу после неё состояние персистится: убитый
+ *    посреди дня джоб не должен ни потерять отправленную карточку из
+ *    pending, ни отправить её повторно завтра.
  * 4. Опрос — держится на long-poll самого `getUpdates` (см. комментарий у
  *    `Telegram.getUpdates` в `../telegram/api.ts`, timeout по умолчанию
  *    30с): отдельный `sleep` между вызовами не нужен и только тратил бы
@@ -282,40 +298,33 @@ export async function runDaily(
   options: DailyOptions,
 ): Promise<void> {
   const approveDeps: ApproveDeps = {
-    postToChannel: deps.telegram.postToChannel,
     replaceCard: deps.telegram.replaceCard,
-    closeCard: deps.telegram.closeCard,
+    deleteCard: deps.telegram.deleteCard,
     ack: deps.telegram.ack,
   };
 
-  // Веса тегов каждого бакета — узкий срез `profile.buckets` (только `.tags`,
-  // без stopTags/releaseCount/weightSum), который `handleUpdates` дальше
-  // передаёт в `buildChannelPost` для хэштегов поста (см. комментарий у
-  // `handleUpdates` в `../telegram/approve.ts`). Строится один раз на весь
-  // прогон, а не при каждом вызове `handleUpdates` — профиль не меняется
-  // посреди прогона.
-  const bucketTags = {} as Record<BucketId, Record<string, number>>;
-  for (const bucket of BUCKETS) {
-    bucketTags[bucket.id] = profile.buckets[bucket.id].tags;
-  }
+  // Что реально висело у владельца до этого захода — снимок делается ДО
+  // дренажа, потому что дренаж может подменить кандидата в карточке кнопкой
+  // «Другой». Только это владелец действительно видел; см. `sweepStaleMessages`.
+  const shownBeforeRun = state.pending.map((card) => card.candidate.url);
 
-  // 1. Разобрать нажатия, накопившиеся со вчера — весь backlog, не одна страница.
+  // 1. Разобрать нажатия, накопившиеся с прошлого захода — весь backlog, не одна страница.
   let backlog = await deps.telegram.getUpdates(state.lastUpdateId + 1);
   while (backlog.length > 0) {
-    await handleUpdates(backlog, state, approveDeps, bucketTags, deps.now());
+    await handleUpdates(backlog, state, approveDeps);
     await deps.persistState(state);
     backlog = await deps.telegram.getUpdates(state.lastUpdateId + 1);
   }
 
-  // 2. Собрать сегодняшних кандидатов.
+  // 1b. Снести всё, что осталось в личке с прошлых заходов. После этого
+  // state.pending пуст, а URL показанных карточек лежат в state.seen — то
+  // есть попадут в exclude-множество ниже наравне с разобранным вручную.
+  await sweepStaleMessages(state, deps, shownBeforeRun);
+
+  // 2. Собрать сегодняшних кандидатов и выбрать из них одного.
   const now = deps.now();
   const ownedUrls = await deps.fetchOwnedUrls();
-  // Карточки, зависшие в pending с прошлого прогона (владелец ещё не
-  // ответил), исключаются наравне с уже показанным (state.seen) и уже
-  // имеющимся (ownedUrls) — иначе тот же релиз мог бы получить второй
-  // pending-дубль под другим messageId, пока первый ждёт ответа.
-  const pendingUrls = state.pending.map((card) => card.candidate.url);
-  const excluded = new Set([...state.seen, ...pendingUrls, ...ownedUrls]);
+  const excluded = new Set([...state.seen, ...ownedUrls]);
 
   // Подписки — один сетевой обход на весь прогон (см. п.2 решений), а не
   // по разу на бакет: freshCandidates сама не кэширует и не помнит
@@ -340,13 +349,12 @@ export async function runDaily(
     limit: options.archivePoolLimit,
   });
 
-  // Растёт по ходу цикла: пик одного бакета исключается из предложения
-  // следующим — иначе один и тот же кроссовер-релиз (crust/hardcore и
-  // т.п.) мог бы уйти владельцу дважды в один день под двумя карточками.
-  const shown = new Set(excluded);
-
+  // Бакеты здесь — только источники кандидатов и наборы весов: каждый
+  // добирает свой хаб-свежак к общим (собранным выше один раз на прогон)
+  // подпискам и архиву, а решение, чей кандидат уйдёт владельцу, принимает
+  // один `pickBest` уже над всеми четырьмя входами разом.
+  const bucketInputs: BucketInput[] = [];
   for (const bucket of BUCKETS) {
-    let selection: BucketSelection;
     try {
       const bucketProfile = profile.buckets[bucket.id];
       const hubTags = hubTagsForBucket(bucketProfile, bucket.seedTags, options.hubTagsPerBucket);
@@ -357,71 +365,86 @@ export async function runDaily(
         maxAgeDays: options.maxAgeDays,
         maxFutureDays: options.maxFutureDays,
       });
-      selection = selectForBucket({
-        bucket: bucketProfile,
+      bucketInputs.push({
+        id: bucket.id,
+        profile: bucketProfile,
         seedTags: bucket.seedTags,
-        // `?? []` — та же защита, что и у остальных полей, читанных через
-        // readJson (см. комментарий у `Profile.hardRejectTags` в
-        // ../profile/build.ts и у seedTags выше в этом файле): readJson не
-        // валидирует форму файла против интерфейса, а data/profile.json
-        // хозяин правит руками — устаревший файл без этого поля не должен
-        // ронять весь дневной прогон, только тихо остаться без защиты от
-        // компиляций до следующей правки файла.
-        hardRejectTags: profile.hardRejectTags ?? [],
         fresh: [...hubFresh, ...followsFresh],
         archive: archivePool,
-        seen: shown,
-        context: { labels: profile.labels, tagPenalties: state.feedbackTags },
-        alternativesCount: options.alternativesCount,
       });
     } catch (error) {
       // Один упавший бакет (сеть, discover) не должен утащить с собой
       // остальные три — они читают из независимо собранных пулов.
       console.error(`daily: сбор кандидатов бакета ${bucket.id} упал, бакет пропущен на сегодня`, error);
-      continue;
-    }
-
-    let sentAny = false;
-    for (const outcome of [selection.fresh, selection.archive]) {
-      if (outcome.status !== 'picked') continue;
-      try {
-        const card = buildCard(outcome.candidate, bucket.id, outcome.matchedTags);
-        const sent = await deps.telegram.sendCard(card);
-        const pendingCard: PendingCard = {
-          bucket: bucket.id,
-          messageId: sent.messageId,
-          hasPhoto: card.photo !== null,
-          candidate: outcome.candidate,
-          matchedTags: outcome.matchedTags,
-          alternatives: outcome.alternatives,
-        };
-        state.pending.push(pendingCard);
-        shown.add(outcome.candidate.url);
-        sentAny = true;
-        // Персист сразу после каждой отправленной карточки — не после
-        // всего бакета и не после всех четырёх: если джоб убьют на
-        // следующей карточке, уже отправленные не потеряются из pending
-        // и не уйдут владельцу повторно завтра.
-        await deps.persistState(state);
-      } catch (error) {
-        console.error(`daily: не удалось отправить карточку бакета ${bucket.id}`, error);
-      }
-    }
-
-    if (!sentAny) {
-      const note = bucketEmptyMessage(bucket, selection);
-      if (note) {
-        try {
-          await deps.telegram.notifyOwner(note);
-        } catch (error) {
-          // Уведомление необязательное — состояние уже корректно без него.
-          console.error('daily: не удалось отправить уведомление о пустом бакете', error);
-        }
-      }
     }
   }
 
-  // 3. Ждать нажатий примерно options.listenMinutes. getUpdates уже держит
+  const pickOptions = {
+    buckets: bucketInputs,
+    // `?? []` — та же защита, что и у остальных полей, читанных через
+    // readJson (см. комментарий у `Profile.hardRejectTags` в
+    // ../profile/build.ts и у seedTags выше в этом файле): readJson не
+    // валидирует форму файла против интерфейса, а data/profile.json
+    // хозяин правит руками — устаревший файл без этого поля не должен
+    // ронять весь дневной прогон, только тихо остаться без защиты от
+    // компиляций до следующей правки файла.
+    hardRejectTags: profile.hardRejectTags ?? [],
+    seen: excluded,
+    context: { labels: profile.labels, tagPenalties: state.feedbackTags },
+    alternativesCount: options.alternativesCount,
+    minTotal: options.minTotal,
+  };
+
+  // Запрет на повтор жанра — предпочтение, а не жёсткое правило, и снимается
+  // сам, если из-за него заход остался бы вообще без пика.
+  //
+  // Без этого отката запрет умеет запирать подборщика намертво: он снимается
+  // только состоявшимся пиком, а молчаливый заход `lastBucket` не трогает. Если
+  // единственный жанр, дающий кандидатов выше порога, — как раз забаненный (у
+  // владельца заведомо самый плотный бакет краста, а остальным трём набрать 1.5
+  // удаётся не каждый день), бот замолкает НАВСЕГДА, и никакой следующий заход
+  // это не расколдует. Решение по спеке звучит как «жанр не повторяется два
+  // захода подряд», то есть запрет на один шаг — а не «пока не найдётся другой
+  // жанр, чего бы это ни стоило».
+  //
+  // Повтор жанра здесь — меньшее зло, чем тишина: молчание задумано как ответ
+  // на «сегодня нет ничего стоящего», а не на «стоящее есть, но не того цвета».
+  let best = pickBest({ ...pickOptions, excludeBucket: state.lastBucket });
+  if (!best && state.lastBucket !== undefined) {
+    best = pickBest(pickOptions);
+    if (best) {
+      console.log(`daily: кроме бакета ${best.bucket} сегодня нечего предложить — запрет на повтор снят`);
+    }
+  }
+
+  // Ничего не дотянуло до порога — молчим. Никакого «сегодня пусто» в личку:
+  // это ровно тот шум, ради устранения которого вся схема и переделана.
+  if (!best) {
+    console.log('daily: ничего выше порога, заход молчит');
+    return;
+  }
+
+  // 3. Отправить карточку победителя и сразу же зафиксировать состояние:
+  // если джоб убьют между отправкой и персистом, карточка останется висеть у
+  // владельца с живыми кнопками, а следующий заход о ней не узнает — не
+  // разберёт нажатие, не снесёт хвост и ничто не помешает ему прислать тот же
+  // релиз повторно.
+  const card = buildCard(best.candidate, best.bucket, best.matchedTags);
+  const sent = await deps.telegram.sendCard(card);
+  state.pending.push({
+    bucket: best.bucket,
+    messageId: sent.messageId,
+    hasPhoto: card.photo !== null,
+    candidate: best.candidate,
+    matchedTags: best.matchedTags,
+    alternatives: best.alternatives,
+  });
+  // Запрет на повтор жанра ставится только состоявшимся пиком — молчаливый
+  // заход прошлый запрет не снимает (см. `ApproveState.lastBucket`).
+  state.lastBucket = best.bucket;
+  await deps.persistState(state);
+
+  // 4. Ждать нажатий примерно options.listenMinutes. getUpdates уже держит
   // соединение открытым до 30с сама (см. комментарий у Telegram.getUpdates
   // в ../telegram/api.ts) — отдельный sleep между вызовами не нужен и
   // только тратил бы время стены сверх long-poll. Выходим раньше срока,
@@ -430,10 +453,11 @@ export async function runDaily(
   while (state.pending.length > 0 && deps.now().getTime() < until) {
     const updates = await deps.telegram.getUpdates(state.lastUpdateId + 1);
     if (updates.length === 0) continue;
-    await handleUpdates(updates, state, approveDeps, bucketTags, deps.now());
+    await handleUpdates(updates, state, approveDeps);
     await deps.persistState(state);
   }
-  // Всё, что осталось в state.pending, — карточки у владельца с живыми
-  // кнопками; состояние уже сохранено. Следующий прогон разберёт нажатие
-  // на этих карточках через дренаж backlog на шаге 1.
+  // Если карточка осталась в state.pending, она висит у владельца с живыми
+  // кнопками; состояние уже сохранено. Следующий заход разберёт нажатие по
+  // ней через дренаж backlog на шаге 1, а если нажатия так и не было —
+  // снесёт её подчисткой на шаге 1b.
 }

@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import { BUCKETS, bucketsOf, hubSampleTags, type BucketDef } from './buckets.ts';
 import { canonicalizeTag } from '../lib/tags.ts';
 
-test('описаны ровно четыре бакета с каналами', () => {
+test('описаны ровно четыре бакета с человекочитаемыми именами', () => {
   assert.deepEqual(
     BUCKETS.map((b) => b.id),
     ['crust', 'death-metal', 'hardcore-punk', 'black-metal'],
   );
   for (const bucket of BUCKETS) {
-    assert.ok(bucket.channelEnv.endsWith('_CHANNEL_ID'), bucket.channelEnv);
+    assert.ok(bucket.title.length > 0, `${bucket.id}: пустое title`);
     assert.ok(bucket.seedTags.length >= 3, `${bucket.id}: мало seed-тегов`);
   }
 });
@@ -122,8 +122,7 @@ test('hubSampleTags предпочитает составные seed-теги г
 test('hubSampleTags добирает голые теги, если составных не хватает до limit', () => {
   const thin: BucketDef = {
     id: 'crust',
-    channelTitle: 'TEST',
-    channelEnv: 'TEST_CHANNEL_ID',
+    title: 'TEST',
     seedTags: Object.freeze(['onlybareword', 'also bare-ish']),
   };
   const picked = hubSampleTags(thin, 3);

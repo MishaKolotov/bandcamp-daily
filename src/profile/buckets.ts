@@ -3,10 +3,8 @@ import { canonicalizeTag } from '../lib/tags.ts';
 
 export interface BucketDef {
   id: BucketId;
-  /** Человекочитаемое имя канала — уходит в текст поста. */
-  channelTitle: string;
-  /** Имя переменной окружения с chat_id канала. */
-  channelEnv: string;
+  /** Человекочитаемое имя жанра — уходит в текст карточки владельца. */
+  title: string;
   /**
    * Опорные теги: по ним релиз из коллекции относится к бакету.
    * Остальные веса тегов вычисляются из данных, эти заданы вручную.
@@ -17,8 +15,7 @@ export interface BucketDef {
 export const BUCKETS: readonly BucketDef[] = Object.freeze([
   Object.freeze({
     id: 'crust' as const,
-    channelTitle: 'CRUST DAILY',
-    channelEnv: 'CRUST_CHANNEL_ID',
+    title: 'краст',
     // Написания-варианты ('crustpunk', 'dbeat') отсюда убраны: тег теперь
     // сравнивается по каноническому ключу (`canonicalizeTag` в
     // `../lib/tags.ts`, пробел/дефис/слитно — один и тот же тег), так что
@@ -30,8 +27,7 @@ export const BUCKETS: readonly BucketDef[] = Object.freeze([
   }),
   Object.freeze({
     id: 'death-metal' as const,
-    channelTitle: 'DEATH METAL DAILY',
-    channelEnv: 'DEATH_METAL_CHANNEL_ID',
+    title: 'дэт-метал',
     // 'brutal death metal' убран из опорных по данным живого прогона: в
     // коллекции владельца таких релизов ноль, зато в хабе дэт-метала тег
     // встречается на 27 релизах из 60. Как опорный он объявлял бы жанром
@@ -54,8 +50,7 @@ export const BUCKETS: readonly BucketDef[] = Object.freeze([
   }),
   Object.freeze({
     id: 'hardcore-punk' as const,
-    channelTitle: 'HARDCORE PUNK DAILY',
-    channelEnv: 'HARDCORE_PUNK_CHANNEL_ID',
+    title: 'хардкор-панк',
     // Голые 'hardcore' и 'punk' раньше были намеренно исключены как
     // теги-омонимы (electronic/uptempo hardcore, pop punk, skate punk и
     // т.п.) — в абстракте это верно, но живой прогон на коллекции хозяина
@@ -82,8 +77,7 @@ export const BUCKETS: readonly BucketDef[] = Object.freeze([
   }),
   Object.freeze({
     id: 'black-metal' as const,
-    channelTitle: 'BLACK METAL DAILY',
-    channelEnv: 'BLACK_METAL_CHANNEL_ID',
+    title: 'блэк-метал',
     // 'black metal' и 'raw black metal' — впрямую подтверждены тем же
     // живым прогоном: среди 397 небакетированных релизов это 52 и 10
     // штук соответственно, четвёртый и седьмой по частоте теги во всей

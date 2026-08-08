@@ -169,7 +169,7 @@ for (const bucket of BUCKETS) {
 
   bucketHubData.set(bucket.id, hubs);
   const totalReleasesSampled = hubs.reduce((sum, hub) => sum + hub.releasesSampled, 0);
-  console.log(`  ${bucket.channelTitle}: хаб-теги [${hubTags.join(', ')}], сэмплировано релизов хаба: ${totalReleasesSampled}`);
+  console.log(`  ${bucket.title}: хаб-теги [${hubTags.join(', ')}], сэмплировано релизов хаба: ${totalReleasesSampled}`);
 }
 
 /**
@@ -245,7 +245,7 @@ for (const bucket of BUCKETS) {
   });
 
   console.log(
-    `  ${bucket.channelTitle}: стоп-тегов найдено: ${profile.buckets[bucket.id].stopTags.length}`,
+    `  ${bucket.title}: стоп-тегов найдено: ${profile.buckets[bucket.id].stopTags.length}`,
   );
 }
 
@@ -279,7 +279,7 @@ for (const bucket of BUCKETS) {
     .map(([tag, weight]) => `${tag} ${weight}`)
     .join(', ');
 
-  console.log(`\n${bucket.channelTitle} (${bucket.id})`);
+  console.log(`\n${bucket.title} (${bucket.id})`);
   console.log(`  релизов, питавших бакет: ${data.releaseCount}`);
   console.log(`  тегов пережило порог (minReleases=2): ${tagCount}`);
   console.log(`  топ-теги: ${top || '(пусто)'}`);
