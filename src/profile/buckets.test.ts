@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 import { BUCKETS, bucketsOf, hubSampleTags, type BucketDef } from './buckets.ts';
 import { canonicalizeTag } from '../lib/tags.ts';
 
-test('описаны ровно четыре бакета с человекочитаемыми именами', () => {
+test('описаны все пять бакетов с человекочитаемыми именами', () => {
+  // Порядок значим: он определяет порядок обхода в сборе кандидатов и, при
+  // точном равенстве скоров, победителя в дедупе кроссовера (см. pick.ts).
   assert.deepEqual(
     BUCKETS.map((b) => b.id),
-    ['crust', 'death-metal', 'hardcore-punk', 'black-metal'],
+    ['crust', 'death-metal', 'hardcore-punk', 'electronic', 'black-metal'],
   );
   for (const bucket of BUCKETS) {
     assert.ok(bucket.title.length > 0, `${bucket.id}: пустое title`);
