@@ -95,6 +95,10 @@ const MAX_ACTION_LENGTH = Math.max('skip'.length, 'next'.length);
 
 Удалить целиком функцию `buildChannelPost` и её JSDoc (последние ~30 строк файла).
 
+Вместе с ней осиротеет всё, что обслуживало только пост в канал: `buildHashtags`, `HASHTAG_CAP`, `toHashtagText`, `anchorOpenTag`, `ANCHOR_CLOSE_TAG`, а в `BodyOptions` — поля `hashtagBucketTags` и `linkHeader`. Удалить вместе с JSDoc, предварительно проверив по факту, что из этого не зовётся из `buildCard`/`body`. С уходом `linkHeader` ветвление `if (options.linkHeader)` в `body()` схлопывается в один вариант — не оставлять мёртвую ветку.
+
+**И вычистить тесты этой функции.** В `src/telegram/card.test.ts` около пятнадцати тестов зовут `buildChannelPost` (хэштеги, кап на них, отсутствие названия канала и лейбла в посте, ссылка в хедере, агрессивные входные данные) — удалить их вместе с импортом. Пост в канал не осиротевший код, а фича, которой в продукте не будет: тесты на формат несуществующего поста — мёртвый груз, из-за которого файл перестанет компилироваться. Тесты на `buildCard`, `parseCallback` и `buildCallback` остаются, кроме тех, что проверяют action `post`.
+
 - [ ] **Step 4: Убрать публикацию из approve.ts**
 
 В `src/telegram/approve.ts` удалить:
