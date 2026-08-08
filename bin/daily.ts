@@ -1,7 +1,8 @@
 /**
- * Ежедневный запуск: разобрать вчерашние нажатия, собрать сегодняшних
- * кандидатов по четырём бакетам, отправить владельцу карточки на апрув,
- * подождать реакции (по умолчанию ~2 часа) и выйти. Вся логика — в
+ * Один заход подборщика (их два в сутки): разобрать нажатия с прошлого раза,
+ * собрать кандидатов по четырём бакетам, отправить владельцу в личку ОДИН
+ * лучший альбом — или промолчать, если ничего не дотянуло до порога, —
+ * подождать реакции (по умолчанию ~20 минут) и выйти. Вся логика — в
  * `src/pipeline/daily.ts` (`runDaily`), этот файл только собирает реальные
  * зависимости (Bandcamp, Telegram, файлы на диске) и передаёт их туда —
  * так же, как `bin/build-profile.ts` и `bin/neighbors.ts` собирают Http и
@@ -34,7 +35,7 @@ const PATHS = {
 };
 
 function emptyState(): ApproveState {
-  return { pending: [], posted: [], feedbackTags: {}, seen: [], lastUpdateId: 0, notices: [] };
+  return { pending: [], feedbackTags: {}, seen: [], lastUpdateId: 0 };
 }
 
 // Конфигурация — первым делом, до любого файла и любой сети (см.
@@ -103,10 +104,6 @@ const deps: DailyDeps = {
           });
       return { messageId: sent.message_id };
     },
-    notifyOwner: async (text) => {
-      const sent = await telegram.sendMessage({ chat_id: config.ownerChatId, text });
-      return { messageId: sent.message_id };
-    },
   },
   persistState: (s) => writeJson(PATHS.state, s),
   now: () => new Date(),
@@ -118,7 +115,16 @@ const options: DailyOptions = {
   archivePoolLimit: 80,
   alternativesCount: 3,
   hubTagsPerBucket: 4,
-  listenMinutes: Number(process.env.LISTEN_MINUTES ?? '120'),
+  // 1.5 — это STRONG_MATCH из src/profile/score.ts, порог «совпадение
+  // достаточно сильное, чтобы пережить шальной стоп-тег». Заход, лучший
+  // кандидат которого слабее этого, лучше проведёт молча: смысл всей схемы —
+  // один альбом, который стоит послушать, а не один альбом любой ценой.
+  minTotal: Number(process.env.MIN_TOTAL ?? '1.5'),
+  // 20 минут, а не прежние 120: карточка одна, и всё ожидание нужно ровно
+  // затем, чтобы кнопка «другой» отвечала по горячим следам, а не через 12
+  // часов до следующего захода. Нажатие после выхода джоба не теряется —
+  // его разберёт дренаж backlog в начале следующего захода.
+  listenMinutes: Number(process.env.LISTEN_MINUTES ?? '20'),
 };
 
 await runDaily(profile, neighborsFile.neighbors, state, deps, options);
