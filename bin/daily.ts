@@ -1,46 +1,43 @@
 /**
- * Один заход подборщика (их два в сутки): разобрать нажатия с прошлого раза,
- * собрать кандидатов по четырём бакетам, отправить владельцу в личку ОДИН
- * лучший альбом — или промолчать, если ничего не дотянуло до порога, —
- * подождать реакции (по умолчанию ~20 минут) и выйти. Вся логика — в
- * `src/pipeline/daily.ts` (`runDaily`), этот файл только собирает реальные
- * зависимости (Bandcamp, Telegram, файлы на диске) и передаёт их туда —
- * так же, как `bin/build-profile.ts` и `bin/neighbors.ts` собирают Http и
- * читают/пишут файлы сами, не пряча это в src/.
+ * Один заход подборщика (их два в сутки): спросить у сайта, что владельцу уже
+ * показывали, собрать кандидатов по всем бакетам, отдать сайту ОДИН лучший
+ * альбом — или промолчать, если ничего не дотянуло до порога, — и выйти.
  *
- * Требует две переменные окружения — токен бота и чат владельца (см.
- * `loadConfig` в `../src/pipeline/daily.ts`). Необязательные ручки:
- * `MIN_TOTAL` (порог, ниже которого заход молчит) и `LISTEN_MINUTES` (окно
- * ожидания нажатий).
+ * Карточку, кнопки, диалог описания и пост делает gigamike666.com: у него
+ * вебхук, живой круглосуточно, а этот джоб живёт минуты. Здесь остался чистый
+ * движок отбора и ни грамма состояния — показанное, штрафы по тегам и жанр
+ * прошлого пика лежат в Neon на стороне сайта.
+ *
+ * Вся логика — в `src/pipeline/daily.ts` (`runDaily`), этот файл только
+ * собирает реальные зависимости (Bandcamp, клиент сайта, файлы на диске) и
+ * передаёт их туда — так же, как `bin/build-profile.ts` и `bin/neighbors.ts`
+ * собирают Http и читают/пишут файлы сами, не пряча это в src/.
+ *
+ * Обязательная переменная окружения одна — `PICKER_SECRET` (см. `loadConfig`).
+ * Необязательные ручки: `SITE_URL` (отладка против локального next dev) и
+ * `MIN_TOTAL` (порог, ниже которого заход молчит).
  */
 import { Http } from '../src/lib/http.ts';
-import { readJson, writeJson } from '../src/lib/state.ts';
+import { readJson } from '../src/lib/state.ts';
 import { fetchAlbum } from '../src/bandcamp/album.ts';
 import { discover } from '../src/bandcamp/discover.ts';
 import { fetchBandReleases } from '../src/bandcamp/band.ts';
 import { fetchFanItems, fetchFollowedBands } from '../src/bandcamp/fan.ts';
 import type { Profile } from '../src/profile/build.ts';
 import type { Neighbor } from '../src/pipeline/neighbors.ts';
-import { Telegram } from '../src/telegram/api.ts';
-import type { Card } from '../src/telegram/card.ts';
-import type { ApproveState } from '../src/telegram/approve.ts';
-import { editCard, loadConfig, runDaily, type DailyDeps, type DailyOptions } from '../src/pipeline/daily.ts';
+import { SiteApi } from '../src/site/api.ts';
+import { loadConfig, runDaily, type DailyDeps, type DailyOptions } from '../src/pipeline/daily.ts';
 
 const OWNER_FAN_ID = 7566215;
 
 const PATHS = {
   profile: 'data/profile.json',
   neighbors: 'data/neighbors.json',
-  state: 'data/state.json',
 };
 
-function emptyState(): ApproveState {
-  return { pending: [], feedbackTags: {}, seen: [], lastUpdateId: 0 };
-}
-
-// Конфигурация — первым делом, до любого файла и любой сети (см.
-// комментарий у `loadConfig` в src/pipeline/daily.ts): без токена
-// бессмысленны даже безобидные шаги вроде чтения data/profile.json.
+// Конфигурация — первым делом, до любого файла и любой сети (см. комментарий
+// у `loadConfig` в src/pipeline/daily.ts): без секрета сайт ответит 401, и
+// полчаса обхода Bandcamp уйдут впустую.
 const config = loadConfig();
 
 const profile = await readJson<Profile | null>(PATHS.profile, null);
@@ -51,10 +48,9 @@ if (!profile) {
 // запускали — это не повод падать: свежак по-прежнему соберётся, архивный
 // пул просто окажется пустым (archiveCandidates(..., { neighbors: [] })).
 const neighborsFile = await readJson<{ neighbors: Neighbor[] }>(PATHS.neighbors, { neighbors: [] });
-const state = await readJson<ApproveState>(PATHS.state, emptyState());
 
 const http = new Http({ cacheDir: '.cache', minDelayMs: 900 });
-const telegram = new Telegram(config.botToken);
+const site = new SiteApi(config.siteUrl, config.pickerSecret);
 
 const deps: DailyDeps = {
   fresh: {
@@ -76,36 +72,10 @@ const deps: DailyDeps = {
     const follows = await fetchFollowedBands(http, OWNER_FAN_ID);
     return follows.map((band) => band.subdomain).filter(Boolean);
   },
-  telegram: {
-    replaceCard: async (edit) => {
-      await editCard(telegram, config.ownerChatId, edit);
-    },
-    deleteCard: async (messageId) => {
-      await telegram.deleteMessage({ chat_id: config.ownerChatId, message_id: messageId });
-    },
-    ack: async (callbackQueryId, text) => {
-      await telegram.answerCallbackQuery({ callback_query_id: callbackQueryId, text });
-    },
-    getUpdates: (offset) => telegram.getUpdates(offset),
-    sendCard: async (card: Card) => {
-      const sent = card.photo
-        ? await telegram.sendPhoto({
-            chat_id: config.ownerChatId,
-            photo: card.photo,
-            caption: card.caption,
-            parse_mode: 'HTML',
-            reply_markup: card.keyboard,
-          })
-        : await telegram.sendMessage({
-            chat_id: config.ownerChatId,
-            text: card.caption,
-            parse_mode: 'HTML',
-            reply_markup: card.keyboard,
-          });
-      return { messageId: sent.message_id };
-    },
+  site: {
+    readContext: () => site.readContext(),
+    sendPick: (pick) => site.sendPick(pick),
   },
-  persistState: (s) => writeJson(PATHS.state, s),
   now: () => new Date(),
 };
 
@@ -113,12 +83,11 @@ const deps: DailyDeps = {
  * Числовая переменная окружения с фолбэком на дефолт.
  *
  * Голый `Number(process.env.X ?? '1.5')` тихо превращает опечатку в `NaN`, а
- * `NaN` в этих двух ручках не безобиден: `top.total < NaN` всегда false, то
- * есть `MIN_TOTAL=абв` не «оставит дефолт», а ВЫКЛЮЧИТ порог целиком и бот
- * начнёт слать проходняк; `LISTEN_MINUTES=абв` молча схлопнет окно ожидания в
- * ноль, и кнопка «другой» перестанет отвечать. Обе переменные документированы
- * в README как то, что владелец крутит руками, — значит опечатка в них
- * ожидаема, и падать на ней лучше сразу и громко.
+ * `NaN` в этой ручке не безобиден: `top.total < NaN` всегда false, то есть
+ * `MIN_TOTAL=абв` не «оставит дефолт», а ВЫКЛЮЧИТ порог целиком и подборщик
+ * начнёт слать проходняк. Переменная документирована в README как то, что
+ * владелец крутит руками, — значит опечатка в ней ожидаема, и падать на ней
+ * лучше сразу и громко.
  */
 function numberFromEnv(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -141,11 +110,6 @@ const options: DailyOptions = {
   // кандидат которого слабее этого, лучше проведёт молча: смысл всей схемы —
   // один альбом, который стоит послушать, а не один альбом любой ценой.
   minTotal: numberFromEnv('MIN_TOTAL', 1.5),
-  // 20 минут, а не прежние 120: карточка одна, и всё ожидание нужно ровно
-  // затем, чтобы кнопка «другой» отвечала по горячим следам, а не через 12
-  // часов до следующего захода. Нажатие после выхода джоба не теряется —
-  // его разберёт дренаж backlog в начале следующего захода.
-  listenMinutes: numberFromEnv('LISTEN_MINUTES', 20),
 };
 
-await runDaily(profile, neighborsFile.neighbors, state, deps, options);
+await runDaily(profile, neighborsFile.neighbors, deps, options);
