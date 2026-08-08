@@ -141,3 +141,13 @@ test('нечитаемый ответ (5xx с не-JSON телом) превра
     },
   );
 });
+
+test('deleteMessage бьёт в нужный метод и несёт chat_id с message_id', async () => {
+  // Единственный метод API, на котором держится и снос разобранной карточки,
+  // и подчистка хвостов: опечатка в имени метода вылезла бы только на живом
+  // боте, причём тихо — оба вызывающих места глотают ошибку как косметическую.
+  const { telegram, calls } = stub({ ok: true, result: true });
+  await telegram.deleteMessage({ chat_id: '42', message_id: 7 });
+  assert.equal(calls[0]?.url, 'https://api.telegram.org/botTOKEN/deleteMessage');
+  assert.deepEqual(calls[0]?.body, { chat_id: '42', message_id: 7 });
+});

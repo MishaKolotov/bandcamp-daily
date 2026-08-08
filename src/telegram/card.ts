@@ -233,7 +233,7 @@ function body(candidate: Candidate, options: BodyOptions): string {
  * код в pipeline уже вычисляет его для скоринга и передаёт сюда), но больше
  * не попадает в текст карточки: раньше explanation-строка повторяла до трёх
  * из тех же тегов, что уже перечислены строкой выше, — владелец читал одни
- * и те же слова дважды на каждой из шести карточек в день.
+ * и те же слова дважды в каждой карточке.
  */
 export function buildCard(candidate: Candidate, bucket: BucketId, matchedTags: string[]): Card {
   void matchedTags;

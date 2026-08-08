@@ -539,6 +539,82 @@ test('runDaily: подчистка сносит вчерашнюю карточ�
   );
 });
 
+test('runDaily: «другой», нажатый вне окна, не выжигает альтернативу, которой владелец не видел', async () => {
+  // Самый обычный сценарий: карточка пришла утром, владелец нажал «другой»
+  // днём, когда джоб уже вышел. Вечерний заход разбирает нажатие дренажем —
+  // handleNext подменяет кандидата в карточке на альтернативу — и тут же
+  // сносит эту карточку подчисткой. Альтернативу владелец не видел ни
+  // секунды, и помечать её показанной значит выжечь релиз из конечного пула
+  // впустую.
+  const profile = fakeProfile();
+  const card = leftoverCard(500, 'https://x.test/album/shown');
+  const alternative = { ...card.candidate, itemId: 501, url: 'https://x.test/album/alt' };
+  card.alternatives = [alternative];
+  const state: ApproveState = { pending: [card], feedbackTags: {}, seen: [], lastUpdateId: 0 };
+
+  const nextPress: TelegramUpdate = {
+    update_id: 1,
+    callback_query: {
+      id: 'q',
+      data: `next|${card.bucket}|${card.candidate.itemId}`,
+      message: { message_id: 500, chat: { id: 1 } },
+    },
+  };
+
+  const deps: DailyDeps = {
+    fresh: { discover: async () => [], bandReleases: async () => [], album: async () => null },
+    archive: { album: async () => null },
+    fetchOwnedUrls: async () => [],
+    fetchFollowSubdomains: async () => [],
+    telegram: baseTelegram([[nextPress]]),
+    persistState: async () => {},
+    now: () => new Date('2026-08-03'),
+  };
+
+  await runDaily(profile, [], state, deps, baseOptions);
+
+  assert.ok(state.seen.includes('https://x.test/album/shown'), 'показанный релиз помечается показанным');
+  assert.ok(
+    !state.seen.includes('https://x.test/album/alt'),
+    'альтернатива, мелькнувшая только между дренажем и подчисткой, показанной не считается',
+  );
+});
+
+test('runDaily: запрет на повтор жанра снимается, если иначе заход промолчал бы', async () => {
+  // Запрет снимается только состоявшимся пиком, а молчаливый заход lastBucket
+  // не трогает. Значит без отката бот, у которого кандидаты выше порога есть
+  // только в забаненном бакете, замолкает НАВСЕГДА — ни один следующий заход
+  // это не расколдует. Повтор жанра — меньшее зло, чем вечная тишина.
+  const profile = fakeProfile();
+  const onlyBucket = BUCKETS[0]!;
+  const state = emptyState();
+  state.lastBucket = onlyBucket.id;
+  const telegram = baseTelegram();
+
+  const deps: DailyDeps = {
+    fresh: {
+      // Кандидаты есть только под опорный тег забаненного бакета.
+      discover: async (opts) =>
+        opts.tag === onlyBucket.seedTags[0]
+          ? [{ itemId: 1, url: 'https://x.test/album/only', title: 'T', artist: 'A', location: null }]
+          : [],
+      bandReleases: async () => [],
+      album: async () => album({ tags: [onlyBucket.seedTags[0]!] }),
+    },
+    archive: { album: async () => null },
+    fetchOwnedUrls: async () => [],
+    fetchFollowSubdomains: async () => [],
+    telegram,
+    persistState: async () => {},
+    now: () => new Date('2026-08-03'),
+  };
+
+  await runDaily(profile, [], state, deps, baseOptions);
+
+  assert.equal(telegram.sentCards.length, 1, 'заход обязан прислать альбом, а не замолчать навсегда');
+  assert.equal(state.lastBucket, onlyBucket.id);
+});
+
 test('runDaily: провал удаления одного хвоста не мешает снести остальные', async () => {
   const profile = fakeProfile();
   // Три карточки разом за один заход больше не отправляются, но подчистка

@@ -216,6 +216,12 @@ export function pickBest(options: PickOptions): BestPick | null {
     // чужого жанра разошлась бы и с подписью карточки, и с тем, как
     // `handleUpdates` ищет карточку в `pending` по бакету.
     .filter((entry) => entry.bucket === top.bucket)
+    // Порог держит и запас тоже. Кандидат ниже `minTotal` — это ровно то, о
+    // чём подборщик сам решил бы «лучше промолчать»; выдать его по нажатию
+    // «другой» значило бы обойти собственное решение через кнопку. Молчание
+    // здесь честнее: кончившийся запас закрывает карточку и говорит об этом
+    // прямо, а проходняк под видом второго варианта — нет.
+    .filter((entry) => entry.total >= options.minTotal)
     .slice(0, options.alternativesCount)
     .map((entry) => entry.candidate);
 

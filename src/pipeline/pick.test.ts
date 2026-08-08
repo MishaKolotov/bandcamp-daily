@@ -172,3 +172,28 @@ test('один и тот же релиз в двух бакетах достаё
   });
   assert.equal(best?.bucket, 'crust', 'кроссовер достаётся бакету, чей профиль совпал сильнее');
 });
+
+test('порог держит и запас «другой», а не только победителя', () => {
+  // Иначе подборщик обходит собственное решение через кнопку: победителя он
+  // обязан выбрать выше minTotal, а подменяющего его кандидата — нет, и
+  // первое же нажатие «другой» выдаёт ровно тот проходняк, ради неприсылки
+  // которого схема и молчит.
+  const best = pickBest({
+    ...base,
+    minTotal: 1.5,
+    buckets: [
+      {
+        id: 'crust',
+        profile: profileOf({ crust: 0.5, 'd-beat': 1 }),
+        seedTags: ['crust'],
+        fresh: [
+          candidate('https://x.test/strong', ['crust', 'd-beat']), // 1.5 — проходит
+          candidate('https://x.test/weak', ['crust']), // 0.5 — ниже порога
+        ],
+        archive: [],
+      },
+    ],
+  });
+  assert.equal(best?.candidate.url, 'https://x.test/strong');
+  assert.deepEqual(best?.alternatives, [], 'кандидат ниже порога в запас не попадает');
+});

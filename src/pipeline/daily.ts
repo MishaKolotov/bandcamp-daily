@@ -218,21 +218,32 @@ export interface DailyOptions {
  * потеряли бы и само нажатие, и его след в `feedbackTags`) и ДО сбора
  * сегодняшних кандидатов.
  *
- * Снесённая карточка помечается показанной (`rememberSeen`) — владелец её
- * видел и не отреагировал; предлагать завтра ровно то, что он вчера
- * проигнорировал, значит спорить с ним карточками. Это ровно тот смысл, что
- * уже заложен в `ApproveState.seen` («показанные в любом статусе»).
+ * Показанным (`rememberSeen`) помечается НЕ тот кандидат, что лежит в карточке
+ * на момент сноса, а `shownBeforeRun` — то, что реально висело у владельца
+ * перед этим заходом. Разница не косметическая. Дренаж (шаг 1) мог разобрать
+ * нажатие «Другой», пришедшее уже после выхода прошлого джоба: `handleNext`
+ * пометит показанным старого кандидата (правильно — его владелец видел),
+ * подменит содержимое карточки на альтернативу и оставит её в `pending`. Через
+ * долю секунды эта же карточка сносится здесь — и альтернативу владелец не
+ * увидит ни секунды. Пометить её показанной значило бы выжечь из конечного
+ * пула релиз, которого никто не видел: спека называет истощение пула главным
+ * риском схемы, а тут он тратился бы вхолостую и молча.
  *
  * Неудача удаления не фатальна: сообщение мог снести сам владелец руками, а
  * состояние к этому моменту уже согласовано. Ошибка логируется, прогон идёт
  * дальше.
  */
-async function sweepStaleMessages(state: ApproveState, deps: DailyDeps): Promise<void> {
-  const stale = state.pending.map((card) => ({ messageId: card.messageId, url: card.candidate.url }));
-  if (stale.length === 0) return;
+async function sweepStaleMessages(
+  state: ApproveState,
+  deps: DailyDeps,
+  shownBeforeRun: readonly string[],
+): Promise<void> {
+  const messageIds = state.pending.map((card) => card.messageId);
+  if (messageIds.length === 0) return;
 
-  for (const { messageId, url } of stale) {
-    rememberSeen(state, url);
+  for (const url of shownBeforeRun) rememberSeen(state, url);
+
+  for (const messageId of messageIds) {
     try {
       await deps.telegram.deleteCard(messageId);
     } catch (error) {
@@ -292,7 +303,12 @@ export async function runDaily(
     ack: deps.telegram.ack,
   };
 
-  // 1. Разобрать нажатия, накопившиеся со вчера — весь backlog, не одна страница.
+  // Что реально висело у владельца до этого захода — снимок делается ДО
+  // дренажа, потому что дренаж может подменить кандидата в карточке кнопкой
+  // «Другой». Только это владелец действительно видел; см. `sweepStaleMessages`.
+  const shownBeforeRun = state.pending.map((card) => card.candidate.url);
+
+  // 1. Разобрать нажатия, накопившиеся с прошлого захода — весь backlog, не одна страница.
   let backlog = await deps.telegram.getUpdates(state.lastUpdateId + 1);
   while (backlog.length > 0) {
     await handleUpdates(backlog, state, approveDeps);
@@ -300,10 +316,10 @@ export async function runDaily(
     backlog = await deps.telegram.getUpdates(state.lastUpdateId + 1);
   }
 
-  // 1b. Снести всё, что осталось в личке с прошлых прогонов. После этого
-  // state.pending пуст, а URL снесённых карточек лежат в state.seen — то
+  // 1b. Снести всё, что осталось в личке с прошлых заходов. После этого
+  // state.pending пуст, а URL показанных карточек лежат в state.seen — то
   // есть попадут в exclude-множество ниже наравне с разобранным вручную.
-  await sweepStaleMessages(state, deps);
+  await sweepStaleMessages(state, deps, shownBeforeRun);
 
   // 2. Собрать сегодняшних кандидатов и выбрать из них одного.
   const now = deps.now();
@@ -363,7 +379,7 @@ export async function runDaily(
     }
   }
 
-  const best = pickBest({
+  const pickOptions = {
     buckets: bucketInputs,
     // `?? []` — та же защита, что и у остальных полей, читанных через
     // readJson (см. комментарий у `Profile.hardRejectTags` в
@@ -377,8 +393,29 @@ export async function runDaily(
     context: { labels: profile.labels, tagPenalties: state.feedbackTags },
     alternativesCount: options.alternativesCount,
     minTotal: options.minTotal,
-    excludeBucket: state.lastBucket,
-  });
+  };
+
+  // Запрет на повтор жанра — предпочтение, а не жёсткое правило, и снимается
+  // сам, если из-за него заход остался бы вообще без пика.
+  //
+  // Без этого отката запрет умеет запирать подборщика намертво: он снимается
+  // только состоявшимся пиком, а молчаливый заход `lastBucket` не трогает. Если
+  // единственный жанр, дающий кандидатов выше порога, — как раз забаненный (у
+  // владельца заведомо самый плотный бакет краста, а остальным трём набрать 1.5
+  // удаётся не каждый день), бот замолкает НАВСЕГДА, и никакой следующий заход
+  // это не расколдует. Решение по спеке звучит как «жанр не повторяется два
+  // захода подряд», то есть запрет на один шаг — а не «пока не найдётся другой
+  // жанр, чего бы это ни стоило».
+  //
+  // Повтор жанра здесь — меньшее зло, чем тишина: молчание задумано как ответ
+  // на «сегодня нет ничего стоящего», а не на «стоящее есть, но не того цвета».
+  let best = pickBest({ ...pickOptions, excludeBucket: state.lastBucket });
+  if (!best && state.lastBucket !== undefined) {
+    best = pickBest(pickOptions);
+    if (best) {
+      console.log(`daily: кроме бакета ${best.bucket} сегодня нечего предложить — запрет на повтор снят`);
+    }
+  }
 
   // Ничего не дотянуло до порога — молчим. Никакого «сегодня пусто» в личку:
   // это ровно тот шум, ради устранения которого вся схема и переделана.
