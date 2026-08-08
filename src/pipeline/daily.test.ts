@@ -1,15 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import type { AlbumDetails, BucketId, Candidate } from '../bandcamp/types.ts';
+import type { AlbumDetails, BucketId } from '../bandcamp/types.ts';
 import { BUCKETS } from '../profile/buckets.ts';
 import type { BucketProfile, Profile } from '../profile/build.ts';
-import type { ApproveState, CardEdit, PendingCard } from '../telegram/approve.ts';
-import type { TelegramUpdate } from '../telegram/api.ts';
-import type { Card } from '../telegram/card.ts';
+import type { PickerContext, PickRequest } from '../site/api.ts';
 import {
-  editCard,
+  DEFAULT_SITE_URL,
   hubTagsForBucket,
   loadConfig,
+  penaltyTagsFor,
   runDaily,
   type DailyDeps,
   type DailyOptions,
@@ -83,58 +82,38 @@ test('hubTagsForBucket: регрессия по реальному отчёту 
 });
 
 // ---------------------------------------------------------------------------
-// editCard
-// ---------------------------------------------------------------------------
-
-function fakeTelegram() {
-  const calls: string[] = [];
-  return {
-    calls,
-    editMessageCaption: async (payload: { message_id: number }) => {
-      calls.push(`caption:${payload.message_id}`);
-    },
-    editMessageText: async (payload: { message_id: number }) => {
-      calls.push(`text:${payload.message_id}`);
-    },
-  };
-}
-
-test('editCard: карточка, отправленная как фото, редактируется editMessageCaption', async () => {
-  const telegram = fakeTelegram();
-  const edit: CardEdit = { messageId: 7, hasPhoto: true, caption: 'c', keyboard: { inline_keyboard: [] } };
-  await editCard(telegram, 'chat', edit);
-  assert.deepEqual(telegram.calls, ['caption:7']);
-});
-
-test('editCard: карточка, отправленная как текст, редактируется editMessageText', async () => {
-  const telegram = fakeTelegram();
-  const edit: CardEdit = { messageId: 7, hasPhoto: false, caption: 'c', keyboard: { inline_keyboard: [] } };
-  await editCard(telegram, 'chat', edit);
-  assert.deepEqual(telegram.calls, ['text:7']);
-});
-
-// ---------------------------------------------------------------------------
 // loadConfig
 // ---------------------------------------------------------------------------
 
-test('loadConfig: все недостающие переменные собираются в одну ошибку, а не бросаются по одной', () => {
-  // Обе переменные отсутствуют разом — ошибка обязана назвать обе, а не
-  // только первую по порядку: иначе владелец узнавал бы о недостающих
-  // переменных по одной за прогон, завёл токен, перезапустил, узнал про
-  // следующую.
-  assert.throws(
-    () => loadConfig({}),
-    (error: unknown) =>
-      error instanceof Error &&
-      error.message.includes('TELEGRAM_BOT_TOKEN') &&
-      error.message.includes('OWNER_CHAT_ID'),
-  );
+test('loadConfig: без PICKER_SECRET падает сразу и по имени переменной', () => {
+  assert.throws(() => loadConfig({} as NodeJS.ProcessEnv), /PICKER_SECRET/);
 });
 
-test('loadConfig требует только токен и чат владельца', () => {
-  const config = loadConfig({ TELEGRAM_BOT_TOKEN: 't', OWNER_CHAT_ID: '42' });
-  assert.equal(config.botToken, 't');
-  assert.equal(config.ownerChatId, '42');
+test('loadConfig: SITE_URL необязателен и по умолчанию — свой сайт', () => {
+  const config = loadConfig({ PICKER_SECRET: 's' } as NodeJS.ProcessEnv);
+  assert.equal(config.siteUrl, DEFAULT_SITE_URL);
+  assert.equal(config.pickerSecret, 's');
+});
+
+test('loadConfig: SITE_URL переопределяется — отладка против локального next dev', () => {
+  const config = loadConfig({ PICKER_SECRET: 's', SITE_URL: 'http://localhost:3000' } as NodeJS.ProcessEnv);
+  assert.equal(config.siteUrl, 'http://localhost:3000');
+});
+
+// ---------------------------------------------------------------------------
+// penaltyTagsFor
+// ---------------------------------------------------------------------------
+
+test('penaltyTagsFor: опорный тег бакета не штрафуется — иначе бакет отбракует сам себя', () => {
+  assert.deepEqual(penaltyTagsFor(['crust', 'stenchcore'], ['crust', 'd-beat']), ['stenchcore']);
+});
+
+test('penaltyTagsFor: сравнение каноническое — дефис не превращает опорный тег в штрафуемый', () => {
+  assert.deepEqual(penaltyTagsFor(['d beat', 'dbeat'], ['d-beat']), []);
+});
+
+test('penaltyTagsFor: релиз, совпавший только опорными тегами, не даёт штрафовать ничего', () => {
+  assert.deepEqual(penaltyTagsFor(['crust'], ['crust']), []);
 });
 
 // ---------------------------------------------------------------------------
@@ -165,34 +144,16 @@ function fakeProfile(): Profile {
   return { generatedAt: '2026-08-03', buckets, labels: {}, hardRejectTags: [] };
 }
 
-function emptyState(): ApproveState {
-  return { pending: [], feedbackTags: {}, seen: [], lastUpdateId: 0 };
-}
-
-interface FakeTelegramDeps {
-  getUpdates: DailyDeps['telegram']['getUpdates'];
-  sendCard: DailyDeps['telegram']['sendCard'];
-  replaceCard: DailyDeps['telegram']['replaceCard'];
-  deleteCard: DailyDeps['telegram']['deleteCard'];
-  ack: DailyDeps['telegram']['ack'];
-  sentCards: Card[];
-}
-
-function baseTelegram(updateBatches: TelegramUpdate[][] = []): FakeTelegramDeps {
-  const batches = [...updateBatches];
-  const sentCards: Card[] = [];
-  let nextMessageId = 1000;
+/** Сайт за интерфейсом: помнит всё, что ему отдали, и отвечает заданным контекстом. */
+function fakeSite(context: Partial<PickerContext> = {}) {
+  const sent: PickRequest[] = [];
   return {
-    sentCards,
-    getUpdates: async () => batches.shift() ?? [],
-    sendCard: async (card) => {
-      sentCards.push(card);
-      nextMessageId += 1;
-      return { messageId: nextMessageId };
+    sent,
+    readContext: async () => ({ seen: [], feedbackTags: {}, lastBucket: null, ...context }),
+    sendPick: async (pick: PickRequest) => {
+      sent.push(pick);
+      return { messageId: 1000 + sent.length };
     },
-    replaceCard: async () => {},
-    deleteCard: async () => {},
-    ack: async () => {},
   };
 }
 
@@ -203,85 +164,130 @@ const baseOptions: DailyOptions = {
   alternativesCount: 3,
   hubTagsPerBucket: 4,
   minTotal: 0,
-  listenMinutes: 0,
 };
 
-test('runDaily: отправляет ровно одну карточку за заход', async () => {
-  const profile = fakeProfile();
-  const state = emptyState();
-  const telegram = baseTelegram();
-
-  const deps: DailyDeps = {
-    fresh: {
-      // Один свежий кандидат на хаб-тег — url кодирует сам тег, так что
-      // фейку не нужно знать имена бакетов, только сам запрошенный тег.
-      // Кандидаты набираются во всех четырёх бакетах, но уйти владельцу
-      // обязан ровно один — лучший из всех разом.
-      discover: async (opts) => [
-        { itemId: 1, url: `https://x.test/album/${opts.tag}`, title: opts.tag, artist: 'A', location: null },
-      ],
-      bandReleases: async () => [],
-      album: async (url) => album({ tags: [url.split('/').pop()!] }),
-    },
+/** Зависимости без сети: свежак/архив пустые, сайт подставляется вызывающим тестом. */
+function baseDeps(site: DailyDeps['site']): DailyDeps {
+  return {
+    fresh: { discover: async () => [], bandReleases: async () => [], album: async () => null },
     archive: { album: async () => null },
     fetchOwnedUrls: async () => [],
     fetchFollowSubdomains: async () => [],
-    telegram,
-    persistState: async () => {},
+    site,
     now: () => new Date('2026-08-03'),
   };
+}
 
-  await runDaily(profile, [], state, deps, baseOptions);
+/** Свежак, где каждый хаб-тег отдаёт по одному кандидату, несущему ровно этот тег. */
+const oneCandidatePerTag: DailyDeps['fresh'] = {
+  discover: async (opts) => [
+    { itemId: 1, url: `https://x.test/album/${opts.tag}`, title: opts.tag, artist: 'A', location: null },
+  ],
+  bandReleases: async () => [],
+  album: async (url) => album({ tags: [decodeURIComponent(url.split('/').pop()!)] }),
+};
 
-  assert.equal(telegram.sentCards.length, 1);
-  assert.equal(state.pending.length, 1);
-  assert.ok(state.lastBucket, 'бакет пика запоминается для запрета на повтор');
+test('runDaily: отдаёт сайту ровно одного победителя за заход', async () => {
+  // Кандидаты набираются во всех бакетах, но уйти обязан ровно один — лучший
+  // из всех разом.
+  const site = fakeSite();
+  const deps: DailyDeps = { ...baseDeps(site), fresh: oneCandidatePerTag };
+
+  await runDaily(fakeProfile(), [], deps, baseOptions);
+
+  assert.equal(site.sent.length, 1);
+  assert.ok(site.sent[0]?.candidate.url);
 });
 
-test('runDaily: ниже порога не отправляет ничего и не трогает lastBucket', async () => {
+test('runDaily: имя жанра уходит человекочитаемым, а не идентификатором бакета', async () => {
+  // Названия бакетов живут здесь и сюда же прокидываются: держать вторую копию
+  // на сайте значило бы завести источник правды, который однажды разъедется.
+  const site = fakeSite();
+  const deps: DailyDeps = { ...baseDeps(site), fresh: oneCandidatePerTag };
+
+  await runDaily(fakeProfile(), [], deps, baseOptions);
+
+  const pick = site.sent[0]!;
+  const bucket = BUCKETS.find((entry) => entry.id === pick.bucket)!;
+  assert.equal(pick.bucketTitle, bucket.title);
+  assert.notEqual(pick.bucketTitle, pick.bucket);
+});
+
+test('runDaily: в штрафах уезжают только не-опорные теги релиза', async () => {
+  // Опорный тег несёт каждый релиз бакета по построению — штрафовать его по
+  // «Не моё» значило бы за десяток отказов утопить бакет целиком.
+  const bucket = BUCKETS[0]!;
+  const seed = bucket.seedTags[0]!;
   const profile = fakeProfile();
-  const state = emptyState();
-  state.lastBucket = 'crust';
-  const telegram = baseTelegram();
+  // Тег заведомо синтетический: 'stenchcore' и прочие правдоподобные
+  // подсказки сами лежат в seedTags бакетов, и тест проверял бы пустоту.
+  profile.buckets[bucket.id].tags = { [seed]: 0.5, 'not-a-seed-tag': 1 };
 
+  const site = fakeSite();
   const deps: DailyDeps = {
+    ...baseDeps(site),
     fresh: {
-      discover: async (opts) => [
-        { itemId: 1, url: `https://x.test/album/${opts.tag}`, title: opts.tag, artist: 'A', location: null },
-      ],
+      discover: async (opts) =>
+        opts.tag === seed
+          ? [{ itemId: 1, url: 'https://x.test/album/only', title: 'T', artist: 'A', location: null }]
+          : [],
       bandReleases: async () => [],
-      album: async (url) => album({ tags: [url.split('/').pop()!] }),
+      album: async () => album({ tags: [seed, 'not-a-seed-tag'] }),
     },
-    archive: { album: async () => null },
-    fetchOwnedUrls: async () => [],
-    fetchFollowSubdomains: async () => [],
-    telegram,
-    persistState: async () => {},
-    now: () => new Date('2026-08-03'),
   };
 
-  await runDaily(profile, [], state, deps, { ...baseOptions, minTotal: 99 });
+  await runDaily(profile, [], deps, baseOptions);
 
-  assert.equal(telegram.sentCards.length, 0);
-  assert.equal(state.pending.length, 0);
-  assert.equal(state.lastBucket, 'crust', 'молчаливый заход не сбрасывает запрет');
+  const pick = site.sent[0]!;
+  assert.ok(pick.candidate.tags.includes(seed), 'опорный тег у релиза есть — иначе проверка ниже пуста');
+  assert.deepEqual(pick.penaltyTags, ['not-a-seed-tag']);
 });
 
-test('runDaily: кандидат с тегом из profile.hardRejectTags не отправляется владельцу ни основным пиком, ни запасным', async () => {
+test('runDaily: ниже порога не ходит на сайт вовсе', async () => {
+  const site = fakeSite({ lastBucket: 'crust' });
+  const deps: DailyDeps = { ...baseDeps(site), fresh: oneCandidatePerTag };
+
+  await runDaily(fakeProfile(), [], deps, { ...baseOptions, minTotal: 99 });
+
+  assert.equal(site.sent.length, 0, 'молчаливый заход не должен дёргать сайт пустым запросом');
+});
+
+test('runDaily: показанное с сайта попадает в отбор и второй раз не предлагается', async () => {
+  const bucket = BUCKETS[0]!;
+  const seed = bucket.seedTags[0]!;
+  const url = 'https://x.test/album/only';
+
+  const site = fakeSite({ seen: [url] });
+  const deps: DailyDeps = {
+    ...baseDeps(site),
+    fresh: {
+      // Единственный кандидат на весь заход — и он уже показан.
+      discover: async (opts) =>
+        opts.tag === seed ? [{ itemId: 1, url, title: 'T', artist: 'A', location: null }] : [],
+      bandReleases: async () => [],
+      album: async () => album({ tags: [seed] }),
+    },
+  };
+
+  await runDaily(fakeProfile(), [], deps, baseOptions);
+
+  assert.equal(site.sent.length, 0);
+});
+
+test('runDaily: кандидат с тегом из profile.hardRejectTags не уходит ни основным пиком, ни запасным', async () => {
   // Прямая проверка сквозного провода profile.hardRejectTags -> pickBest ->
-  // score() (см. вызов `pickBest` в daily.ts): для каждого хаб-тега discover
-  // отдаёт три кандидата — два обычных и копию с довеском 'compilation'.
-  // Обычные проходят скоринг (несут тег бакета), компиляция несёт тот же тег
-  // (то есть матчится НЕ слабее), но должна быть убита hardRejectTags
-  // целиком — ни как основной пик, ни как «другой кандидат» в запасе. Второй
-  // обычный кандидат тут не для симметрии: без него у победителя не было бы
-  // ни одной альтернативы, и проверка запаса стала бы пустой.
+  // score(): на каждый хаб-тег discover отдаёт трёх кандидатов — двух обычных
+  // и копию с довеском 'compilation'. Обычные проходят скоринг, компиляция
+  // несёт тот же тег (то есть матчится НЕ слабее), но должна быть убита
+  // целиком. Второй обычный кандидат тут не для симметрии: без него у
+  // победителя не было бы ни одной альтернативы, и проверка запаса стала бы
+  // пустой.
   const profile = fakeProfile();
   profile.hardRejectTags = ['compilation'];
-  const state = emptyState();
-  const telegram = baseTelegram();
 
+  const site = fakeSite();
   const deps: DailyDeps = {
+    ...baseDeps(site),
     fresh: {
       discover: async (opts) => [
         { itemId: 1, url: `https://x.test/album/${opts.tag}`, title: opts.tag, artist: 'A', location: null },
@@ -297,301 +303,34 @@ test('runDaily: кандидат с тегом из profile.hardRejectTags не 
       bandReleases: async () => [],
       album: async (url) => {
         const isComp = url.endsWith('-comp');
-        const tag = url.split('/').pop()!.replace(/-(comp|b)$/, '');
+        const tag = decodeURIComponent(url.split('/').pop()!).replace(/-(comp|b)$/, '');
         return album({ tags: isComp ? [tag, 'compilation'] : [tag] });
       },
     },
-    archive: { album: async () => null },
-    fetchOwnedUrls: async () => [],
-    fetchFollowSubdomains: async () => [],
-    telegram,
-    persistState: async () => {},
-    now: () => new Date('2026-08-03'),
   };
 
-  await runDaily(profile, [], state, deps, baseOptions);
+  await runDaily(profile, [], deps, baseOptions);
 
-  const card = state.pending[0];
-  assert.ok(card, 'некомпилированный кандидат был — карточка обязана уйти');
+  const pick = site.sent[0];
+  assert.ok(pick, 'некомпилированный кандидат был — пик обязан уйти');
+  assert.ok(!pick.candidate.tags.includes('compilation'), 'владельцу отправлена компиляция как основной пик');
+  assert.ok(pick.alternatives.length > 0, 'запас «другой» должен быть непустым, иначе проверка ниже пуста');
   assert.ok(
-    !card.candidate.tags.includes('compilation'),
-    'владельцу отправлена компиляция как основной пик',
-  );
-  assert.ok(card.alternatives.length > 0, 'запас «другой кандидат» должен быть непустым, иначе проверка ниже пуста');
-  assert.ok(
-    card.alternatives.every((alt) => !alt.tags.includes('compilation')),
-    'компиляция лежит в запасе «другой кандидат»',
-  );
-});
-
-test('runDaily: разбор нажатия (skip) во время дренажа backlog пишет в persistState ровно то, что произвёл handleUpdates', async () => {
-  const profile = fakeProfile();
-  const bucketId = BUCKETS[0]!.id;
-  const candidate: Candidate = {
-    itemId: 42,
-    url: 'https://x.test/album/42',
-    title: 'T',
-    artist: 'A',
-    label: null,
-    // 'noise' — не опорный тег бакета, поэтому скип обязан оставить след в
-    // feedbackTags (опорные из штрафа исключены, см. `handleSkip`).
-    tags: [BUCKETS[0]!.seedTags[0]!, 'noise'],
-    releasedAt: '2026-08-01',
-    artUrl: null,
-    alsoCollected: 0,
-    origin: 'fresh',
-  };
-  const state: ApproveState = {
-    pending: [{ bucket: bucketId, messageId: 500, hasPhoto: false, candidate, matchedTags: [], alternatives: [] }],
-    feedbackTags: {},
-    seen: [],
-    lastUpdateId: 0,
-  };
-
-  const skipUpdate: TelegramUpdate = {
-    update_id: 9,
-    callback_query: { id: 'q1', data: `skip|${bucketId}|42`, message: { message_id: 500, chat: { id: 1 } } },
-  };
-
-  const persisted: ApproveState[] = [];
-  const telegram = baseTelegram([[skipUpdate]]);
-
-  const deps: DailyDeps = {
-    fresh: { discover: async () => [], bandReleases: async () => [], album: async () => null },
-    archive: { album: async () => null },
-    fetchOwnedUrls: async () => [],
-    fetchFollowSubdomains: async () => [],
-    telegram,
-    persistState: async (s) => {
-      persisted.push(JSON.parse(JSON.stringify(s)));
-    },
-    now: () => new Date('2026-08-03'),
-  };
-
-  await runDaily(profile, [], state, deps, { ...baseOptions, listenMinutes: 0 });
-
-  assert.equal(state.pending.length, 0);
-  assert.ok(state.seen.includes(candidate.url));
-  assert.equal(state.feedbackTags.noise, 1);
-  assert.ok(persisted.length > 0);
-  // Последний персист обязан совпадать с реальным итоговым состоянием —
-  // ровно то, что произвёл handleUpdates, а не устаревший снимок.
-  assert.deepEqual(persisted[persisted.length - 1], JSON.parse(JSON.stringify(state)));
-});
-
-test('runDaily: опрос останавливается раньше срока, как только pending опустел', async () => {
-  const profile = fakeProfile();
-  const state = emptyState();
-
-  let pollCalls = 0;
-  // Карточка должна появиться ПО ХОДУ прогона, а не быть посажена в pending
-  // заранее: всё, что осталось в pending с прошлого прогона, подчистка на
-  // шаге 1b сносит до сбора кандидатов (см. `sweepStaleMessages`).
-  //
-  // Скип шлётся сразу за все четыре бакета, потому что тест не знает, чей
-  // кандидат выиграет сквозной рейтинг; попадёт ровно один, остальные три
-  // handleUpdates отбросит как «карточка уже обработана».
-  const skipAll: TelegramUpdate[] = BUCKETS.map((bucket, index) => ({
-    update_id: index + 1,
-    callback_query: {
-      id: `q${index}`,
-      data: `skip|${bucket.id}|1`,
-      message: { message_id: 1, chat: { id: 1 } },
-    },
-  }));
-
-  const deps: DailyDeps = {
-    fresh: {
-      discover: async (opts) => [
-        { itemId: 1, url: `https://x.test/album/${opts.tag}`, title: opts.tag, artist: 'A', location: null },
-      ],
-      bandReleases: async () => [],
-      album: async (url) => album({ tags: [url.split('/').pop()!] }),
-    },
-    archive: { album: async () => null },
-    fetchOwnedUrls: async () => [],
-    fetchFollowSubdomains: async () => [],
-    telegram: {
-      ...baseTelegram(),
-      // Первый вызов (дренаж backlog) — пусто, второй (опрос) — нажатия,
-      // опустошающие pending; счётчик доказывает, что опрос не продолжает
-      // молотить getUpdates после того, как разбирать больше нечего.
-      getUpdates: async () => {
-        pollCalls += 1;
-        return pollCalls === 2 ? skipAll : [];
-      },
-    },
-    persistState: async () => {},
-    // Часы не двигаются — "до" всегда далеко в будущем относительно
-    // фиксированного now(), так что выход возможен только по опустевшему pending.
-    now: () => new Date('2026-08-03'),
-  };
-
-  await runDaily(profile, [], state, deps, { ...baseOptions, listenMinutes: 120 });
-
-  assert.equal(state.pending.length, 0);
-  assert.equal(pollCalls, 2, 'опрос обязан остановиться сразу после того, как pending опустел');
-});
-
-test('runDaily: listenMinutes 0 — опрос не запускается вовсе, если время уже вышло', async () => {
-  const profile = fakeProfile();
-  const bucketId = BUCKETS[0]!.id;
-  const candidate: Candidate = {
-    itemId: 1,
-    url: 'https://x.test/album/1',
-    title: 'T',
-    artist: 'A',
-    label: null,
-    tags: [],
-    releasedAt: '2026-08-01',
-    artUrl: null,
-    alsoCollected: 0,
-    origin: 'fresh',
-  };
-  const state: ApproveState = {
-    pending: [{ bucket: bucketId, messageId: 1, hasPhoto: false, candidate, matchedTags: [], alternatives: [] }],
-    feedbackTags: {},
-    seen: [],
-    lastUpdateId: 0,
-  };
-
-  let getUpdatesCalls = 0;
-  const deps: DailyDeps = {
-    fresh: { discover: async () => [], bandReleases: async () => [], album: async () => null },
-    archive: { album: async () => null },
-    fetchOwnedUrls: async () => [],
-    fetchFollowSubdomains: async () => [],
-    telegram: {
-      getUpdates: async () => {
-        getUpdatesCalls += 1;
-        return [];
-      },
-      sendCard: async () => ({ messageId: 1 }),
-      replaceCard: async () => {},
-      deleteCard: async () => {},
-      ack: async () => {},
-    },
-    persistState: async () => {},
-    now: () => new Date('2026-08-03'),
-  };
-
-  await runDaily(profile, [], state, deps, { ...baseOptions, listenMinutes: 0 });
-
-  // Один вызов — дренаж backlog на шаге 1. Цикл опроса на шаге 4 не должен
-  // был вызвать getUpdates ни разу: until уже в прошлом при listenMinutes=0.
-  assert.equal(getUpdatesCalls, 1);
-  // Посаженная в pending карточка — хвост прошлого прогона; подчистка на
-  // шаге 1b сносит её до сбора кандидатов, а не оставляет висеть.
-  assert.equal(state.pending.length, 0);
-});
-
-/** Непрожатая карточка прошлого захода — то, что подчистка обязана снести. */
-function leftoverCard(messageId: number, url: string): PendingCard {
-  return {
-    bucket: BUCKETS[0]!.id,
-    messageId,
-    hasPhoto: false,
-    candidate: {
-      itemId: messageId,
-      url,
-      title: 'T',
-      artist: 'A',
-      label: null,
-      tags: [],
-      releasedAt: '2026-08-01',
-      artUrl: null,
-      alsoCollected: 0,
-      origin: 'fresh',
-    },
-    matchedTags: [],
-    alternatives: [],
-  };
-}
-
-test('runDaily: подчистка сносит вчерашнюю карточку, помечая релиз показанным', async () => {
-  const profile = fakeProfile();
-  const card = leftoverCard(11, 'https://x.test/album/leftover');
-  const state: ApproveState = { pending: [card], feedbackTags: {}, seen: [], lastUpdateId: 0 };
-
-  const deleted: number[] = [];
-  const deps: DailyDeps = {
-    fresh: { discover: async () => [], bandReleases: async () => [], album: async () => null },
-    archive: { album: async () => null },
-    fetchOwnedUrls: async () => [],
-    fetchFollowSubdomains: async () => [],
-    telegram: {
-      ...baseTelegram(),
-      deleteCard: async (messageId) => {
-        deleted.push(messageId);
-      },
-    },
-    persistState: async () => {},
-    now: () => new Date('2026-08-03'),
-  };
-
-  await runDaily(profile, [], state, deps, baseOptions);
-
-  assert.deepEqual(deleted, [11]);
-  assert.equal(state.pending.length, 0);
-  assert.ok(
-    state.seen.includes(card.candidate.url),
-    'непрожатая карточка считается показанной — иначе тот же релиз придёт завтра снова',
-  );
-});
-
-test('runDaily: «другой», нажатый вне окна, не выжигает альтернативу, которой владелец не видел', async () => {
-  // Самый обычный сценарий: карточка пришла утром, владелец нажал «другой»
-  // днём, когда джоб уже вышел. Вечерний заход разбирает нажатие дренажем —
-  // handleNext подменяет кандидата в карточке на альтернативу — и тут же
-  // сносит эту карточку подчисткой. Альтернативу владелец не видел ни
-  // секунды, и помечать её показанной значит выжечь релиз из конечного пула
-  // впустую.
-  const profile = fakeProfile();
-  const card = leftoverCard(500, 'https://x.test/album/shown');
-  const alternative = { ...card.candidate, itemId: 501, url: 'https://x.test/album/alt' };
-  card.alternatives = [alternative];
-  const state: ApproveState = { pending: [card], feedbackTags: {}, seen: [], lastUpdateId: 0 };
-
-  const nextPress: TelegramUpdate = {
-    update_id: 1,
-    callback_query: {
-      id: 'q',
-      data: `next|${card.bucket}|${card.candidate.itemId}`,
-      message: { message_id: 500, chat: { id: 1 } },
-    },
-  };
-
-  const deps: DailyDeps = {
-    fresh: { discover: async () => [], bandReleases: async () => [], album: async () => null },
-    archive: { album: async () => null },
-    fetchOwnedUrls: async () => [],
-    fetchFollowSubdomains: async () => [],
-    telegram: baseTelegram([[nextPress]]),
-    persistState: async () => {},
-    now: () => new Date('2026-08-03'),
-  };
-
-  await runDaily(profile, [], state, deps, baseOptions);
-
-  assert.ok(state.seen.includes('https://x.test/album/shown'), 'показанный релиз помечается показанным');
-  assert.ok(
-    !state.seen.includes('https://x.test/album/alt'),
-    'альтернатива, мелькнувшая только между дренажем и подчисткой, показанной не считается',
+    pick.alternatives.every((alt) => !alt.tags.includes('compilation')),
+    'компиляция лежит в запасе «другой»',
   );
 });
 
 test('runDaily: запрет на повтор жанра снимается, если иначе заход промолчал бы', async () => {
-  // Запрет снимается только состоявшимся пиком, а молчаливый заход lastBucket
+  // Запрет снимается только состоявшимся пиком, а молчаливый заход last_bucket
   // не трогает. Значит без отката бот, у которого кандидаты выше порога есть
   // только в забаненном бакете, замолкает НАВСЕГДА — ни один следующий заход
   // это не расколдует. Повтор жанра — меньшее зло, чем вечная тишина.
-  const profile = fakeProfile();
   const onlyBucket = BUCKETS[0]!;
-  const state = emptyState();
-  state.lastBucket = onlyBucket.id;
-  const telegram = baseTelegram();
+  const site = fakeSite({ lastBucket: onlyBucket.id });
 
   const deps: DailyDeps = {
+    ...baseDeps(site),
     fresh: {
       // Кандидаты есть только под опорный тег забаненного бакета.
       discover: async (opts) =>
@@ -601,79 +340,42 @@ test('runDaily: запрет на повтор жанра снимается, е
       bandReleases: async () => [],
       album: async () => album({ tags: [onlyBucket.seedTags[0]!] }),
     },
-    archive: { album: async () => null },
-    fetchOwnedUrls: async () => [],
-    fetchFollowSubdomains: async () => [],
-    telegram,
-    persistState: async () => {},
-    now: () => new Date('2026-08-03'),
   };
 
-  await runDaily(profile, [], state, deps, baseOptions);
+  await runDaily(fakeProfile(), [], deps, baseOptions);
 
-  assert.equal(telegram.sentCards.length, 1, 'заход обязан прислать альбом, а не замолчать навсегда');
-  assert.equal(state.lastBucket, onlyBucket.id);
+  assert.equal(site.sent.length, 1, 'заход обязан прислать альбом, а не замолчать навсегда');
+  assert.equal(site.sent[0]?.bucket, onlyBucket.id);
 });
 
-test('runDaily: провал удаления одного хвоста не мешает снести остальные', async () => {
-  const profile = fakeProfile();
-  // Три карточки разом за один заход больше не отправляются, но подчистка
-  // обходит ВЕСЬ pending, а не одну запись: в файле состояния их может
-  // лежать сколько угодно — хвост старой схемы с пачкой карточек за прогон,
-  // или заход, убитый до того, как успел разобрать нажатия.
-  const state: ApproveState = {
-    pending: [21, 22, 23].map((id) => leftoverCard(id, `https://x.test/album/${id}`)),
-    feedbackTags: {},
-    seen: [],
-    lastUpdateId: 0,
-  };
+test('runDaily: жанр прошлого пика, которого больше нет в BUCKETS, ничего не запрещает', async () => {
+  // В Neon лежит то, что записал прошлый заход. Переименованный или снятый
+  // бакет не должен ни падать, ни запрещать несуществующее.
+  const site = fakeSite({ lastBucket: 'sludge-that-never-existed' });
+  const deps: DailyDeps = { ...baseDeps(site), fresh: oneCandidatePerTag };
 
-  const deleted: number[] = [];
-  const deps: DailyDeps = {
-    fresh: { discover: async () => [], bandReleases: async () => [], album: async () => null },
-    archive: { album: async () => null },
-    fetchOwnedUrls: async () => [],
-    fetchFollowSubdomains: async () => [],
-    telegram: {
-      ...baseTelegram(),
-      deleteCard: async (messageId) => {
-        // Владелец мог снести сообщение руками — Telegram ответит ошибкой.
-        if (messageId === 22) throw new Error('message to delete not found');
-        deleted.push(messageId);
-      },
-    },
-    persistState: async () => {},
-    now: () => new Date('2026-08-03'),
-  };
+  await runDaily(fakeProfile(), [], deps, baseOptions);
 
-  await runDaily(profile, [], state, deps, baseOptions);
-
-  assert.deepEqual(deleted, [21, 23]);
-  assert.equal(
-    state.pending.length,
-    0,
-    'вчерашние хвосты забыты все разом, включая тот, что не удалился — повторять снос нечего',
-  );
+  assert.equal(site.sent.length, 1);
 });
 
 test('runDaily: без единого кандидата заход молчит, а не шлёт служебное «сегодня пусто»', async () => {
-  const profile = fakeProfile();
-  const state = emptyState();
-  const telegram = baseTelegram();
+  const site = fakeSite();
 
-  const deps: DailyDeps = {
-    fresh: { discover: async () => [], bandReleases: async () => [], album: async () => null },
-    archive: { album: async () => null },
-    fetchOwnedUrls: async () => [],
-    fetchFollowSubdomains: async () => [],
-    telegram,
-    persistState: async () => {},
-    now: () => new Date('2026-08-03'),
+  await runDaily(fakeProfile(), [], baseDeps(site), baseOptions);
+
+  assert.equal(site.sent.length, 0);
+});
+
+test('runDaily: сорванный контекст роняет заход, а не превращается в отбор с чистого листа', async () => {
+  // Пустой контекст вместо ошибки означал бы «владельцу ничего не показывали»
+  // — и заход честно предложил бы то, что тот вчера скипнул.
+  const site = {
+    readContext: async () => {
+      throw new Error('GET /api/picker/context — 500: boom');
+    },
+    sendPick: async () => ({ messageId: 1 }),
   };
 
-  await runDaily(profile, [], state, deps, baseOptions);
-
-  assert.equal(telegram.sentCards.length, 0);
-  assert.equal(state.pending.length, 0);
-  assert.equal(state.lastBucket, undefined, 'пустой заход не ставит запрет ни на один бакет');
+  await assert.rejects(() => runDaily(fakeProfile(), [], baseDeps(site), baseOptions), /500/);
 });
