@@ -81,17 +81,28 @@ export interface BestPick {
   matchedTags: string[];
   total: number;
   /**
-   * Следующие по скору кандидаты ТОГО ЖЕ бакета, что и победитель — не более
-   * `alternativesCount`. Только бакет победителя, а не любые оставшиеся
-   * кандидаты вообще: карточка уходит на сайт вместе с жанром победителя
-   * (`bucket` и `bucketTitle` в теле `POST /api/picker/pick`), жанр печатается
-   * в подписи и остаётся в строке `picker_pending` неизменным. Кнопка «Другой»
-   * подменяет на сайте только кандидата, а подпись перерисовывается с тем же
-   * `bucket_title` — подсунь ей релиз чужого бакета, и на карточке был бы
-   * написан один жанр, а показан другой. Короче: смена кандидата кнопкой
-   * «Другой» обязана быть заменой ТОЛЬКО музыки, а не жанра карточки.
+   * Следующие по скору кандидаты — не более `alternativesCount`, из ЛЮБОГО
+   * бакета, а не только из бакета победителя.
+   *
+   * Раньше запас фильтровался по бакету победителя: карточка уходила с одним
+   * жанром, и подмена кандидата чужим сделала бы подпись ложной. Ограничение
+   * снято вместе со своей причиной — сайт теперь хранит жанр каждого варианта
+   * рядом с ним и перерисовывает подпись при подмене. Держать его дальше
+   * значило запирать владельца в одном жанре: три нажатия «Другой» подряд
+   * выдавали три блэк-метал релиза, потому что взять что-то ещё запас не мог.
+   *
+   * Каждая запись несёт свой `bucket` — по нему вызывающий код (`runDaily`)
+   * добирает человекочитаемое имя жанра и считает штрафные теги, вычитая
+   * опорные теги ИМЕННО этого бакета.
    */
-  alternatives: Candidate[];
+  alternatives: RankedAlternative[];
+}
+
+/** Запасной вариант: кандидат вместе с бакетом, которому он принадлежит. */
+export interface RankedAlternative {
+  bucket: BucketId;
+  candidate: Candidate;
+  matchedTags: string[];
 }
 
 /**
@@ -207,11 +218,6 @@ export function pickBest(options: PickOptions): BestPick | null {
 
   const alternatives = deduped
     .slice(1)
-    // Только бакет победителя — см. развёрнутое обоснование в JSDoc на
-    // `BestPick.alternatives`: подмена кандидата кнопкой «другой» на релиз
-    // чужого жанра разошлась бы и с подписью карточки, и с тем, как
-    // `handleUpdates` ищет карточку в `pending` по бакету.
-    .filter((entry) => entry.bucket === top.bucket)
     // Порог держит и запас тоже. Кандидат ниже `minTotal` — это ровно то, о
     // чём подборщик сам решил бы «лучше промолчать»; выдать его по нажатию
     // «другой» значило бы обойти собственное решение через кнопку. Молчание
@@ -219,7 +225,7 @@ export function pickBest(options: PickOptions): BestPick | null {
     // прямо, а проходняк под видом второго варианта — нет.
     .filter((entry) => entry.total >= options.minTotal)
     .slice(0, options.alternativesCount)
-    .map((entry) => entry.candidate);
+    .map((entry) => ({ bucket: entry.bucket, candidate: entry.candidate, matchedTags: entry.matchedTags }));
 
   return { bucket: top.bucket, candidate: top.candidate, matchedTags: top.matchedTags, total: top.total, alternatives };
 }

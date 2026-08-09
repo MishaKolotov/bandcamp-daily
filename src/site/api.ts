@@ -26,6 +26,21 @@ export interface SiteCandidate {
   origin: 'fresh' | 'archive';
 }
 
+/**
+ * Запасной вариант для кнопки «Другой» — кандидат вместе со СВОИМ жанром.
+ *
+ * Запас сквозной по всем бакетам, поэтому следующий вариант почти наверняка
+ * другого жанра, чем победитель. Сайт при подмене перерисовывает подпись
+ * карточки по `bucketTitle` варианта и берёт из него же теги под штраф —
+ * без этого карточка писала бы жанр победителя, а показывала чужой.
+ */
+export interface SiteAlternative {
+  bucket: string;
+  bucketTitle: string;
+  candidate: SiteCandidate;
+  penaltyTags: string[];
+}
+
 /** Тело `POST /api/picker/pick` — победитель захода плюс запас на кнопку «Другой». */
 export interface PickRequest {
   bucket: string;
@@ -44,7 +59,7 @@ export interface PickRequest {
    */
   penaltyTags: string[];
   total: number;
-  alternatives: SiteCandidate[];
+  alternatives: SiteAlternative[];
 }
 
 /** Ответ `GET /api/picker/context` — всё, что нужно знать о прошлом, чтобы не повторяться. */

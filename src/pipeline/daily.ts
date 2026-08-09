@@ -342,7 +342,18 @@ export async function runDaily(
     candidate: toSiteCandidate(best.candidate),
     penaltyTags: penaltyTagsFor(best.matchedTags, bucket.seedTags),
     total: best.total,
-    alternatives: best.alternatives.map(toSiteCandidate),
+    // Запас сквозной по бакетам, поэтому имя жанра и штрафные теги считаются
+    // для КАЖДОГО варианта отдельно, по его собственному бакету, а не
+    // наследуются от победителя.
+    alternatives: best.alternatives.map((alternative) => {
+      const altBucket = BUCKETS.find((entry) => entry.id === alternative.bucket)!;
+      return {
+        bucket: alternative.bucket,
+        bucketTitle: altBucket.title,
+        candidate: toSiteCandidate(alternative.candidate),
+        penaltyTags: penaltyTagsFor(alternative.matchedTags, altBucket.seedTags),
+      };
+    }),
   });
   console.log(`daily: ${best.candidate.artist} — ${best.candidate.title} (${bucket.title}, ${best.total.toFixed(2)}) отправлен, message_id ${sent.messageId}`);
 }

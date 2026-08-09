@@ -316,8 +316,39 @@ test('runDaily: кандидат с тегом из profile.hardRejectTags не 
   assert.ok(!pick.candidate.tags.includes('compilation'), 'владельцу отправлена компиляция как основной пик');
   assert.ok(pick.alternatives.length > 0, 'запас «другой» должен быть непустым, иначе проверка ниже пуста');
   assert.ok(
-    pick.alternatives.every((alt) => !alt.tags.includes('compilation')),
+    pick.alternatives.every((alt) => !alt.candidate.tags.includes('compilation')),
     'компиляция лежит в запасе «другой»',
+  );
+});
+
+test('runDaily: каждый вариант запаса несёт свой жанр и свои штрафные теги', async () => {
+  // Запас сквозной по бакетам, поэтому имя жанра и вычитание опорных тегов
+  // считаются по бакету САМОГО варианта. Возьми их у победителя — и карточка
+  // после нажатия «Другой» подписалась бы чужим жанром, а «Не моё» оштрафовало
+  // бы теги альбома, которого на экране уже нет.
+  const site = fakeSite();
+  const deps: DailyDeps = { ...baseDeps(site), fresh: oneCandidatePerTag };
+
+  await runDaily(fakeProfile(), [], deps, baseOptions);
+
+  const pick = site.sent[0]!;
+  assert.ok(pick.alternatives.length > 0, 'запас пуст — проверять нечего');
+
+  for (const alt of pick.alternatives) {
+    const bucket = BUCKETS.find((entry) => entry.id === alt.bucket)!;
+    assert.ok(bucket, `вариант ссылается на несуществующий бакет ${alt.bucket}`);
+    assert.equal(alt.bucketTitle, bucket.title);
+    for (const tag of alt.penaltyTags) {
+      assert.ok(
+        !bucket.seedTags.includes(tag),
+        `опорный тег ${tag} бакета ${alt.bucket} попал в штрафы варианта`,
+      );
+    }
+  }
+
+  assert.ok(
+    pick.alternatives.some((alt) => alt.bucket !== pick.bucket),
+    'запас, целиком совпавший с бакетом победителя, не доказывает сквозной отбор',
   );
 });
 

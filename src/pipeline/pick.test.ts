@@ -85,7 +85,11 @@ test('бакет прошлого пика исключается целиком
   assert.equal(best?.bucket, 'crust');
 });
 
-test('запас «другой» берётся только из бакета победителя', () => {
+test('запас «другой» собирается по всем бакетам, а не только по бакету победителя', () => {
+  // Запас, ограниченный бакетом победителя, запирал владельца в одном жанре:
+  // три нажатия «Другой» подряд выдавали три релиза того же жанра, потому что
+  // взять что-то ещё было неоткуда. Здесь у краста и свой второй кандидат, и
+  // конкурент из чужого бакета — в запасе обязаны быть оба, в порядке скора.
   const best = pickBest({
     ...base,
     buckets: [
@@ -99,13 +103,23 @@ test('запас «другой» берётся только из бакета 
         ],
         archive: [],
       },
-      bucketInput('death-metal', ['death metal'], ['death metal'], { 'death metal': 0.5 }),
+      bucketInput('death-metal', ['death metal', 'hm-2'], ['death metal'], {
+        'death metal': 0.5,
+        'hm-2': 0.75,
+      }),
     ],
   });
-  assert.equal(best?.candidate.url, 'https://x.test/a');
+
+  assert.equal(best?.candidate.url, 'https://x.test/a', 'побеждает всё тот же максимальный total');
   assert.deepEqual(
-    best?.alternatives.map((c) => c.url),
-    ['https://x.test/b'],
+    best?.alternatives.map((entry) => entry.candidate.url),
+    ['https://x.test/death-metal', 'https://x.test/b'],
+    'дэт-метал (1.25) идёт впереди второго краста (0.5) — запас упорядочен по скору, а не по жанру',
+  );
+  assert.deepEqual(
+    best?.alternatives.map((entry) => entry.bucket),
+    ['death-metal', 'crust'],
+    'каждый вариант несёт свой бакет: по нему сайт перерисует жанр в подписи',
   );
 });
 
@@ -141,7 +155,7 @@ test('релиз, попавший и в свежак, и в архив, не с
   });
   assert.equal(best?.candidate.url, 'https://x.test/same');
   assert.deepEqual(
-    best?.alternatives.map((c) => c.url),
+    best?.alternatives.map((entry) => entry.candidate.url),
     [],
     'дубль того же URL не имеет права попасть в запас «другой»',
   );
