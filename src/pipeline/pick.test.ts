@@ -314,3 +314,29 @@ test('запас не длиннее alternativesCount, сколько бы жа
 
   assert.equal(best?.alternatives.length, 2);
 });
+
+test('очередь отдаётся целиком, если потолок её не режет', () => {
+  // Очередь «Другой» листается, пока не кончится, — обрезать её на первых
+  // нескольких значило бы закрывать карточку при живых кандидатах выше порога.
+  const best = pickBest({
+    ...base,
+    alternativesCount: 40,
+    buckets: [
+      {
+        id: 'crust',
+        profile: profileOf({ crust: 0.5, 'd-beat': 1, stenchcore: 0.9, raw: 0.8, noise: 0.7 }),
+        seedTags: ['crust'],
+        fresh: [
+          candidate('https://x.test/1', ['crust', 'd-beat']),
+          candidate('https://x.test/2', ['crust', 'stenchcore']),
+          candidate('https://x.test/3', ['crust', 'raw']),
+          candidate('https://x.test/4', ['crust', 'noise']),
+        ],
+        archive: [],
+      },
+      bucketInput('death-metal', ['death metal'], ['death metal'], { 'death metal': 0.9 }),
+    ],
+  });
+
+  assert.equal(best?.alternatives.length, 4, 'все прошедшие порог, кроме победителя, обязаны быть в очереди');
+});
