@@ -91,6 +91,11 @@ export interface BestPick {
    * значило запирать владельца в одном жанре: три нажатия «Другой» подряд
    * выдавали три блэк-метал релиза, потому что взять что-то ещё запас не мог.
    *
+   * Порядок — НЕ чистый скор, а круг по жанрам: каждый бакет отдаёт своего
+   * лучшего по очереди (см. `roundRobinAlternatives`). Сортировки по скору
+   * оказалось мало — плотный жанр подметал весь запас и кнопка по-прежнему
+   * выдавала подряд один жанр, просто уже без явного фильтра.
+   *
    * Каждая запись несёт свой `bucket` — по нему вызывающий код (`runDaily`)
    * добирает человекочитаемое имя жанра и считает штрафные теги, вычитая
    * опорные теги ИМЕННО этого бакета.
@@ -216,16 +221,85 @@ export function pickBest(options: PickOptions): BestPick | null {
   // прислать нечего, лучше промолчать, чем прислать заведомо мимо вкуса.
   if (!top || top.total < options.minTotal) return null;
 
-  const alternatives = deduped
+  const rest = deduped
     .slice(1)
     // Порог держит и запас тоже. Кандидат ниже `minTotal` — это ровно то, о
     // чём подборщик сам решил бы «лучше промолчать»; выдать его по нажатию
     // «другой» значило бы обойти собственное решение через кнопку. Молчание
     // здесь честнее: кончившийся запас закрывает карточку и говорит об этом
     // прямо, а проходняк под видом второго варианта — нет.
-    .filter((entry) => entry.total >= options.minTotal)
-    .slice(0, options.alternativesCount)
-    .map((entry) => ({ bucket: entry.bucket, candidate: entry.candidate, matchedTags: entry.matchedTags }));
+    .filter((entry) => entry.total >= options.minTotal);
+
+  const alternatives = roundRobinAlternatives(rest, top.bucket, options.alternativesCount);
 
   return { bucket: top.bucket, candidate: top.candidate, matchedTags: top.matchedTags, total: top.total, alternatives };
+}
+
+/**
+ * Раскладывает запас по кругу между жанрами вместо чистой сортировки по скору.
+ *
+ * ЗАЧЕМ. Снять фильтр «только бакет победителя» оказалось недостаточно: сырой
+ * рейтинг честно отражает вкус, а вкус неоднороден, и плотно населённый жанр
+ * подметает верх списка целиком. Живой прогон 2026-08-09 отдал победителя и все
+ * три запасных из одного бакета — формально «следующие по скору», на практике
+ * та же клетка одного жанра, из которой кнопку и вытаскивали. Разнообразие
+ * запаса нельзя получить сортировкой: его приходится задавать порядком.
+ *
+ * КАК. Каждый бакет отдаёт своего лучшего по очереди, и только когда все
+ * высказались — второго, третьего и так далее. Бакет победителя стартует с уже
+ * потраченным слотом: сам победитель и есть его первое высказывание. Отсюда
+ * главное свойство — ПЕРВОЕ нажатие «Другой» гарантированно даёт другой жанр,
+ * если он вообще есть среди прошедших порог.
+ *
+ * Внутри круга бакеты идут по скору своего лучшего оставшегося кандидата, так
+ * что сильное совпадение не ждёт слабого. Порядок детерминирован: `rest` уже
+ * отсортирован по `total`, а при полном равенстве решает порядок появления в
+ * нём (то есть URL — см. вторичный ключ сортировки выше).
+ *
+ * Голодания нет: когда у остальных жанров кандидаты кончились, круг вырождается
+ * в один бакет и запас честно добирается им — лучше однородный запас, чем
+ * пустой.
+ */
+function roundRobinAlternatives(
+  rest: readonly RankedEntry[],
+  winnerBucket: BucketId,
+  limit: number,
+): RankedAlternative[] {
+  if (limit <= 0) return [];
+
+  // Очередь на бакет; порядок внутри очереди — уже по скору, `rest` отсортирован.
+  const queues = new Map<BucketId, RankedEntry[]>();
+  for (const entry of rest) {
+    const queue = queues.get(entry.bucket);
+    if (queue) queue.push(entry);
+    else queues.set(entry.bucket, [entry]);
+  }
+
+  const spoken = new Map<BucketId, number>([[winnerBucket, 1]]);
+  const timesSpoken = (bucket: BucketId): number => spoken.get(bucket) ?? 0;
+
+  const out: RankedAlternative[] = [];
+  while (out.length < limit) {
+    let chosen: BucketId | undefined;
+    for (const [bucket, queue] of queues) {
+      if (queue.length === 0) continue;
+      if (chosen === undefined) {
+        chosen = bucket;
+        continue;
+      }
+      if (timesSpoken(bucket) < timesSpoken(chosen)) chosen = bucket;
+      else if (
+        timesSpoken(bucket) === timesSpoken(chosen) &&
+        queue[0]!.total > queues.get(chosen)![0]!.total
+      ) {
+        chosen = bucket;
+      }
+    }
+    if (chosen === undefined) break;
+
+    const entry = queues.get(chosen)!.shift()!;
+    spoken.set(chosen, timesSpoken(chosen) + 1);
+    out.push({ bucket: entry.bucket, candidate: entry.candidate, matchedTags: entry.matchedTags });
+  }
+  return out;
 }

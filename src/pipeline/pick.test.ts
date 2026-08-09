@@ -211,3 +211,106 @@ test('порог держит и запас «другой», а не тольк
   assert.equal(best?.candidate.url, 'https://x.test/strong');
   assert.deepEqual(best?.alternatives, [], 'кандидат ниже порога в запас не попадает');
 });
+
+test('первый запасной — другого жанра, даже если по скору впереди свой', () => {
+  // Разделяющий случай. По чистому скору запас был бы
+  // ['https://x.test/b' (0.9), 'https://x.test/death-metal' (0.5)] — то есть
+  // первое нажатие «Другой» снова дало бы краст. Круг по жанрам ставит дэт
+  // вперёд: бакет победителя уже высказался самим победителем.
+  const best = pickBest({
+    ...base,
+    buckets: [
+      {
+        id: 'crust',
+        profile: profileOf({ crust: 0.5, 'd-beat': 1, stenchcore: 0.4 }),
+        seedTags: ['crust'],
+        fresh: [
+          candidate('https://x.test/a', ['crust', 'd-beat']),
+          candidate('https://x.test/b', ['crust', 'stenchcore']),
+        ],
+        archive: [],
+      },
+      bucketInput('death-metal', ['death metal'], ['death metal'], { 'death metal': 0.5 }),
+    ],
+  });
+
+  assert.equal(best?.candidate.url, 'https://x.test/a');
+  assert.deepEqual(
+    best?.alternatives.map((entry) => entry.bucket),
+    ['death-metal', 'crust'],
+    'первым обязан идти чужой жанр, вторым — второй краст',
+  );
+});
+
+test('когда чужих жанров не осталось, запас честно добирается своим', () => {
+  // Круг не должен превращаться в голодание: однородный запас лучше пустого.
+  const best = pickBest({
+    ...base,
+    buckets: [
+      {
+        id: 'crust',
+        profile: profileOf({ crust: 0.5, 'd-beat': 1, stenchcore: 0.4 }),
+        seedTags: ['crust'],
+        fresh: [
+          candidate('https://x.test/a', ['crust', 'd-beat']),
+          candidate('https://x.test/b', ['crust', 'stenchcore']),
+          candidate('https://x.test/c', ['crust']),
+        ],
+        archive: [],
+      },
+    ],
+  });
+
+  assert.deepEqual(
+    best?.alternatives.map((entry) => entry.candidate.url),
+    ['https://x.test/b', 'https://x.test/c'],
+    'единственный бакет отдаёт остаток по скору',
+  );
+});
+
+test('круг по жанрам не обходит порог minTotal', () => {
+  // Слабый кандидат чужого жанра не имеет права пролезть в запас только за то,
+  // что он чужого жанра: порог — решение «лучше промолчать», и кнопка не должна
+  // его обходить.
+  const best = pickBest({
+    ...base,
+    minTotal: 0.75,
+    buckets: [
+      {
+        id: 'crust',
+        profile: profileOf({ crust: 0.5, 'd-beat': 1, stenchcore: 0.4 }),
+        seedTags: ['crust'],
+        fresh: [
+          candidate('https://x.test/a', ['crust', 'd-beat']),
+          candidate('https://x.test/b', ['crust', 'stenchcore']),
+        ],
+        archive: [],
+      },
+      bucketInput('death-metal', ['death metal'], ['death metal'], { 'death metal': 0.5 }),
+    ],
+  });
+
+  assert.deepEqual(
+    best?.alternatives.map((entry) => entry.candidate.url),
+    ['https://x.test/b'],
+    'дэт-метал (0.5) ниже порога 0.75 — в запас не попадает, несмотря на круг',
+  );
+});
+
+test('запас не длиннее alternativesCount, сколько бы жанров ни было', () => {
+  const best = pickBest({
+    ...base,
+    alternativesCount: 2,
+    buckets: [
+      bucketInput('crust', ['crust', 'd-beat'], ['crust'], { crust: 0.5, 'd-beat': 1 }),
+      // Веса держатся над MATCH_FLOOR (0.5 в ../profile/score.ts): кандидат
+      // слабее пола отбраковывается скорингом и до запаса вообще не доходит,
+      // так что проверка длины на нём была бы пустой.
+      bucketInput('death-metal', ['death metal'], ['death metal'], { 'death metal': 0.9 }),
+      bucketInput('black-metal', ['black metal'], ['black metal'], { 'black metal': 0.8 }),
+      bucketInput('hardcore-punk', ['hardcore punk'], ['hardcore punk'], { 'hardcore punk': 0.7 }),
+    ],
+  });
+
+  assert.equal(best?.alternatives.length, 2);
+});
