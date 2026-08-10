@@ -309,7 +309,7 @@ SITE_URL=http://localhost:3000 node --import tsx --env-file=.env bin/daily.ts
 | Workflow | Триггер | Что делает |
 |---|---|---|
 | `test.yml` | `push`, `pull_request` | `npm test` + `npx tsc --noEmit` |
-| `daily.yml` | cron `0 6 * * *` + `0 11 * * *` + `0 17 * * *` (утро, день и вечер по UTC, см. комментарий в workflow про локальное время и дрейф Actions) + `workflow_dispatch` | `bin/daily.ts`, ничего не коммитит (`contents: read`) |
+| `daily.yml` | cron `20 6 * * *` + `20 11 * * *` + `20 17 * * *` (утро, день и вечер по UTC, см. комментарий в workflow про локальное время и дрейф Actions) + `workflow_dispatch` | `bin/daily.ts`, ничего не коммитит (`contents: read`) |
 | `neighbors-weekly.yml` | cron `0 3 * * 1` (понедельник) + `workflow_dispatch` | `bin/neighbors.ts --force`, коммитит `data/neighbors.json` |
 
 `daily` больше ничего не пишет в репозиторий: состояние переехало в Neon, а
