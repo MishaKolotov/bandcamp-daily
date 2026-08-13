@@ -96,7 +96,6 @@ export async function freshCandidates(
       releasedAt: details.releasedAt,
       artUrl: details.artUrl,
       alsoCollected: 0,
-      origin: 'fresh',
     });
   }
   // discover.ts и band.ts уже сигналят «результат может быть неполным» —

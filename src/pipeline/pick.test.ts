@@ -14,7 +14,6 @@ const candidate = (url: string, tags: string[], over: Partial<Candidate> = {}): 
   releasedAt: '2026-08-01',
   artUrl: null,
   alsoCollected: 0,
-  origin: 'fresh',
   ...over,
 });
 
@@ -149,7 +148,7 @@ test('релиз, попавший и в свежак, и в архив, не с
         profile: profileOf({ crust: 0.5, 'd-beat': 1 }),
         seedTags: ['crust'],
         fresh: [candidate('https://x.test/same', twice)],
-        archive: [candidate('https://x.test/same', twice, { itemId: 777, origin: 'archive' })],
+        archive: [candidate('https://x.test/same', twice, { itemId: 777 })],
       },
     ],
   });

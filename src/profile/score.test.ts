@@ -38,7 +38,6 @@ const candidate = (over: Partial<Candidate>): Candidate => ({
   releasedAt: '2026-08-01',
   artUrl: null,
   alsoCollected: 0,
-  origin: 'fresh',
   ...over,
 });
 

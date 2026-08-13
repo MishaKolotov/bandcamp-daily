@@ -197,6 +197,10 @@ test('runDaily: отдаёт сайту ровно одного победите
 
   assert.equal(site.sent.length, 1);
   assert.ok(site.sent[0]?.candidate.url);
+  // Контракт с сайтом (SiteCandidate.origin) не тронут — но архивной ветки
+  // больше нет, поэтому наружу всегда уходит буквально 'fresh', см.
+  // toSiteCandidate в daily.ts.
+  assert.equal(site.sent[0]?.candidate.origin, 'fresh');
 });
 
 test('runDaily: имя жанра уходит человекочитаемым, а не идентификатором бакета', async () => {

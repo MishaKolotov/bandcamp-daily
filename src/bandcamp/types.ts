@@ -46,7 +46,4 @@ export interface Candidate extends AlbumDetails {
   itemId: number;
   url: string;
   alsoCollected: number;
-  origin: 'fresh' | 'archive';
-  /** Для архивных — суммарный вес проголосовавших соседей. */
-  neighborWeight?: number;
 }

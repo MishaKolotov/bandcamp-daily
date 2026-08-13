@@ -144,9 +144,14 @@ export interface DailyOptions {
  * Кандидат в форме, которую принимает сайт.
  *
  * Отображение явное, а не `{...candidate}`: у внутреннего `Candidate` есть
- * поля, сайту ненужные (`itemId`, `alsoCollected`, `neighborWeight` — всё это
- * механика отбора), и утекать в чужой контракт они не должны. Заодно
- * компилятор ловит расхождение формы здесь, у себя, а не ответом 400 в проде.
+ * поля, сайту ненужные (`itemId`, `alsoCollected` — всё это механика
+ * отбора), и утекать в чужой контракт они не должны. Заодно компилятор
+ * ловит расхождение формы здесь, у себя, а не ответом 400 в проде.
+ *
+ * `origin` — литерал `'fresh'`, а не поле кандидата: контракт сайта
+ * (`SiteCandidate` в `../site/api.ts`) не трогаем, сайт по-прежнему
+ * валидирует его зодом на своей стороне, но внутренний `Candidate` эту
+ * развилку больше не несёт — архивной ветки нет, источник всегда один.
  */
 function toSiteCandidate(candidate: Candidate): SiteCandidate {
   return {
@@ -157,7 +162,7 @@ function toSiteCandidate(candidate: Candidate): SiteCandidate {
     tags: candidate.tags,
     releasedAt: candidate.releasedAt,
     artUrl: candidate.artUrl,
-    origin: candidate.origin,
+    origin: 'fresh',
   };
 }
 
