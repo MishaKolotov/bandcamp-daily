@@ -9,7 +9,6 @@
   "scripts": {
     "test": "find src -name '*.test.ts' -exec node --import tsx --test {} +",
     "build-profile": "node --import tsx bin/build-profile.ts",
-    "neighbors": "node --import tsx bin/neighbors.ts",
     "daily": "node --import tsx bin/daily.ts",
     "spotify-auth": "node --env-file=.env --import tsx bin/spotify-auth.ts",
     "spotify-taste": "node --env-file=.env --import tsx bin/spotify-taste.ts",
