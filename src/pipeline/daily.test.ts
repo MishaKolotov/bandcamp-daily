@@ -412,3 +412,30 @@ test('runDaily: сорванный контекст роняет заход, а 
 
   await assert.rejects(() => runDaily(fakeProfile(), baseDeps(site), baseOptions), /500/);
 });
+
+test('runDaily: упавший сбор одного бакета не тащит за собой остальные', async () => {
+  // Ветка per-bucket try/catch в runDaily жива с первой версии, но теста на
+  // неё не существовало (вскрылось на финальном ревью удаления архива).
+  // Хабы первого бакета кидают сетевую ошибку — прогон обязан пропустить
+  // его с console.error и всё равно отдать сайту победителя из уцелевших.
+  const failingBucket = BUCKETS[0]!;
+  const failingTags = new Set(
+    Object.keys(fakeProfile().buckets[failingBucket.id].tags).concat([...failingBucket.seedTags]),
+  );
+  const site = fakeSite();
+  const deps: DailyDeps = {
+    ...baseDeps(site),
+    fresh: {
+      ...oneCandidatePerTag,
+      discover: async (opts) => {
+        if (failingTags.has(opts.tag)) throw new Error('discover упал');
+        return oneCandidatePerTag.discover(opts);
+      },
+    },
+  };
+
+  await runDaily(fakeProfile(), deps, baseOptions);
+
+  assert.equal(site.sent.length, 1, 'победитель из уцелевших бакетов всё равно отправлен');
+  assert.notEqual(site.sent[0]?.bucket, failingBucket.id);
+});
