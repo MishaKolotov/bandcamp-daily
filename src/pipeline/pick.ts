@@ -26,7 +26,6 @@ export interface BucketInput {
    */
   seedTags: readonly string[];
   fresh: Candidate[];
-  archive: Candidate[];
 }
 
 export interface PickOptions {
@@ -42,8 +41,8 @@ export interface PickOptions {
   /**
    * URL релизов, уже показанных владельцу. Ключ — URL, а не itemId (та же
    * причина, что и у снятого вместе с каналами `selectForBucket`: itemId
-   * не сравним между источниками, детерминированный ключ между fresh.ts,
-   * archive.ts и этой функцией — только URL).
+   * не сравним между источниками, детерминированный ключ между fresh.ts и
+   * этой функцией — только URL).
    */
   seen: ReadonlySet<string>;
   context: ScoreContext;
@@ -188,12 +187,7 @@ export function pickBest(options: PickOptions): BestPick | null {
     // см. обоснование `excludeBucket` в JSDoc выше и на самом поле.
     if (bucket.id === options.excludeBucket) continue;
 
-    // fresh и archive внутри бакета — один пул на рассмотрение: разница
-    // между ними («вышло сегодня» вместо «откопано у соседей») важна для
-    // текста карточки (`why()` в подписи на стороне сайта), но не для того,
-    // какой релиз сильнее совпал со вкусом — обе ветки проходят один и тот
-    // же скоринг на равных.
-    for (const candidate of [...bucket.fresh, ...bucket.archive]) {
+    for (const candidate of bucket.fresh) {
       if (options.seen.has(candidate.url)) continue;
       const result = score(candidate, bucket.profile, bucket.seedTags, options.hardRejectTags, options.context);
       if (result.rejected) continue;
@@ -208,7 +202,7 @@ export function pickBest(options: PickOptions): BestPick | null {
   // одним и тем же набором тегов бакета), а порядок кандидатов на входе не
   // гарантирован между прогонами. URL как строка ничего не значит сам по
   // себе, но стабилен и есть у каждого кандидата — результат перестаёт
-  // зависеть от порядка `options.buckets` и порядка `fresh`/`archive` внутри
+  // зависеть от порядка `options.buckets` и порядка `bucket.fresh` внутри
   // них.
   deduped.sort((a, b) => {
     if (b.total !== a.total) return b.total - a.total;

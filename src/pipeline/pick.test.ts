@@ -35,7 +35,6 @@ const bucketInput = (
   profile: profileOf(weights),
   seedTags,
   fresh: [candidate(`https://x.test/${id}`, tags)],
-  archive: [],
 });
 
 const base = {
@@ -100,7 +99,6 @@ test('запас «другой» собирается по всем бакет�
           candidate('https://x.test/a', ['crust', 'd-beat']),
           candidate('https://x.test/b', ['crust']),
         ],
-        archive: [],
       },
       bucketInput('death-metal', ['death metal', 'hm-2'], ['death metal'], {
         'death metal': 0.5,
@@ -131,35 +129,6 @@ test('уже показанное не рассматривается', () => {
   assert.equal(best, null);
 });
 
-test('релиз, попавший и в свежак, и в архив, не становится сам себе «другим кандидатом»', () => {
-  // Это тот случай, ради которого дедуп по URL вообще существует, и
-  // единственный, где его отсутствие ВИДНО снаружи: один и тот же релиз
-  // законно приходит из двух источников (подписка выпустила его сегодня — и
-  // он же набрал голоса соседей в архивном пуле), причём с разными itemId
-  // (у архивного это хеш URL, а не настоящий id Bandcamp). Без схлопывания
-  // он занял бы и первое место, и первую строчку запаса — владелец нажал бы
-  // «другой» и увидел ровно тот же альбом.
-  const twice = ['crust', 'd-beat'];
-  const best = pickBest({
-    ...base,
-    buckets: [
-      {
-        id: 'crust',
-        profile: profileOf({ crust: 0.5, 'd-beat': 1 }),
-        seedTags: ['crust'],
-        fresh: [candidate('https://x.test/same', twice)],
-        archive: [candidate('https://x.test/same', twice, { itemId: 777 })],
-      },
-    ],
-  });
-  assert.equal(best?.candidate.url, 'https://x.test/same');
-  assert.deepEqual(
-    best?.alternatives.map((entry) => entry.candidate.url),
-    [],
-    'дубль того же URL не имеет права попасть в запас «другой»',
-  );
-});
-
 test('один и тот же релиз в двух бакетах достаётся тому, где совпадение сильнее', () => {
   const shared = ['crust', 'd-beat'];
   const best = pickBest({
@@ -172,14 +141,12 @@ test('один и тот же релиз в двух бакетах достаё
         profile: profileOf({ crust: 0.5, punk: 0.5 }),
         seedTags: ['crust'],
         fresh: [candidate('https://x.test/same', shared)],
-        archive: [],
       },
       {
         id: 'crust',
         profile: profileOf({ crust: 0.5, 'd-beat': 1 }),
         seedTags: ['crust'],
         fresh: [candidate('https://x.test/same', shared)],
-        archive: [],
       },
     ],
   });
@@ -203,7 +170,6 @@ test('порог держит и запас «другой», а не тольк
           candidate('https://x.test/strong', ['crust', 'd-beat']), // 1.5 — проходит
           candidate('https://x.test/weak', ['crust']), // 0.5 — ниже порога
         ],
-        archive: [],
       },
     ],
   });
@@ -227,7 +193,6 @@ test('первый запасной — другого жанра, даже ес
           candidate('https://x.test/a', ['crust', 'd-beat']),
           candidate('https://x.test/b', ['crust', 'stenchcore']),
         ],
-        archive: [],
       },
       bucketInput('death-metal', ['death metal'], ['death metal'], { 'death metal': 0.5 }),
     ],
@@ -255,7 +220,6 @@ test('когда чужих жанров не осталось, запас че�
           candidate('https://x.test/b', ['crust', 'stenchcore']),
           candidate('https://x.test/c', ['crust']),
         ],
-        archive: [],
       },
     ],
   });
@@ -283,7 +247,6 @@ test('круг по жанрам не обходит порог minTotal', () =>
           candidate('https://x.test/a', ['crust', 'd-beat']),
           candidate('https://x.test/b', ['crust', 'stenchcore']),
         ],
-        archive: [],
       },
       bucketInput('death-metal', ['death metal'], ['death metal'], { 'death metal': 0.5 }),
     ],
@@ -331,7 +294,6 @@ test('очередь отдаётся целиком, если потолок е
           candidate('https://x.test/3', ['crust', 'raw']),
           candidate('https://x.test/4', ['crust', 'noise']),
         ],
-        archive: [],
       },
       bucketInput('death-metal', ['death metal'], ['death metal'], { 'death metal': 0.9 }),
     ],
