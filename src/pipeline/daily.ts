@@ -1,9 +1,7 @@
 import { BUCKETS, orderSeedTagsBySpecificity } from '../profile/buckets.ts';
 import type { BucketProfile, Profile } from '../profile/build.ts';
 import { canonicalizeTag } from '../lib/tags.ts';
-import type { Neighbor } from './neighbors.ts';
 import { freshCandidates, type FreshDeps } from './fresh.ts';
-import { archiveCandidates, type ArchiveDeps } from './archive.ts';
 import { pickBest, type BucketInput } from './pick.ts';
 import type { Candidate } from '../bandcamp/types.ts';
 import type { PickerContext, PickRequest, SiteCandidate } from '../site/api.ts';
@@ -116,7 +114,6 @@ export interface DailySiteDeps {
 
 export interface DailyDeps {
   fresh: FreshDeps;
-  archive: ArchiveDeps;
   /** URL всего, что уже есть у владельца — коллекция и вишлист вместе. */
   fetchOwnedUrls: () => Promise<string[]>;
   /** Субдомены подписок владельца — обходятся один раз за прогон (см. `runDaily`). */
@@ -130,8 +127,6 @@ export interface DailyOptions {
   maxAgeDays: number;
   /** Предзаказ дальше стольких дней в будущем ещё не считается свежим — см. `FreshOptions.maxFutureDays`. */
   maxFutureDays: number;
-  /** Размер общего архивного пула за прогон — генерозный, делится между всеми бакетами скорингом (см. "Решения", п.6). */
-  archivePoolLimit: number;
   /** Запас "другой кандидат" у отправленной карточки — см. `BestPick.alternatives` в `./pick.ts`. */
   alternativesCount: number;
   /** Сколько верхних тегов профиля бакета опрашивать в Discover как хаб-теги. */
@@ -212,15 +207,13 @@ export function penaltyTagsFor(matchedTags: readonly string[], seedTags: readonl
  * 2. Сбор кандидатов и ОДИН пик. Бакеты здесь — не независимые отборы, а
  *    способы набрать кандидатов и наборы весов, которыми их скорить:
  *    собранное уходит в `pickBest` (`./pick.ts`) одним куском, и победитель
- *    ровно один на весь заход. Подписки обходятся ОДИН раз на прогон,
- *    архивный пул тоже строится один раз с запасом и делится между бакетами
- *    скорингом. Ошибка сбора одного бакета (сеть, discover) не роняет
- *    остальные — ловится и логируется точечно.
+ *    ровно один на весь заход. Подписки обходятся ОДИН раз на прогон.
+ *    Ошибка сбора одного бакета (сеть, discover) не роняет остальные —
+ *    ловится и логируется точечно.
  * 3. Отдать победителя сайту. Всё остальное — его забота.
  */
 export async function runDaily(
   profile: Profile,
-  neighbors: Neighbor[],
   deps: DailyDeps,
   options: DailyOptions,
 ): Promise<void> {
@@ -253,19 +246,9 @@ export async function runDaily(
     maxFutureDays: options.maxFutureDays,
   });
 
-  // Архивный пул — тоже один раз за прогон, с запасом (см. п.6 решений):
-  // голоса соседей genre-blind, узкий пул на один вызов селектора мог бы
-  // оставить почти все бакеты вовсе без архивных кандидатов, если топ
-  // голосов забьёт один жанр.
-  const archivePool = await archiveCandidates(deps.archive, {
-    neighbors,
-    exclude: excluded,
-    limit: options.archivePoolLimit,
-  });
-
   // Бакеты здесь — только источники кандидатов и наборы весов: каждый
   // добирает свой хаб-свежак к общим (собранным выше один раз на прогон)
-  // подпискам и архиву, а решение, чей кандидат уйдёт владельцу, принимает
+  // подпискам, а решение, чей кандидат уйдёт владельцу, принимает
   // один `pickBest` уже над всеми входами разом.
   const bucketInputs: BucketInput[] = [];
   for (const bucket of BUCKETS) {
@@ -284,7 +267,6 @@ export async function runDaily(
         profile: bucketProfile,
         seedTags: bucket.seedTags,
         fresh: [...hubFresh, ...followsFresh],
-        archive: archivePool,
       });
     } catch (error) {
       // Один упавший бакет (сеть, discover) не должен утащить с собой

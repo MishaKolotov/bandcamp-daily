@@ -24,7 +24,6 @@ import { discover } from '../src/bandcamp/discover.ts';
 import { fetchBandReleases } from '../src/bandcamp/band.ts';
 import { fetchFanItems, fetchFollowedBands } from '../src/bandcamp/fan.ts';
 import type { Profile } from '../src/profile/build.ts';
-import type { Neighbor } from '../src/pipeline/neighbors.ts';
 import { SiteApi } from '../src/site/api.ts';
 import { loadConfig, runDaily, type DailyDeps, type DailyOptions } from '../src/pipeline/daily.ts';
 
@@ -32,7 +31,6 @@ const OWNER_FAN_ID = 7566215;
 
 const PATHS = {
   profile: 'data/profile.json',
-  neighbors: 'data/neighbors.json',
 };
 
 // Конфигурация — первым делом, до любого файла и любой сети (см. комментарий
@@ -44,10 +42,6 @@ const profile = await readJson<Profile | null>(PATHS.profile, null);
 if (!profile) {
   throw new Error(`нет ${PATHS.profile} — сначала запустить npm run build-profile`);
 }
-// Соседей может не быть, если еженедельный npm run neighbors ещё не
-// запускали — это не повод падать: свежак по-прежнему соберётся, архивный
-// пул просто окажется пустым (archiveCandidates(..., { neighbors: [] })).
-const neighborsFile = await readJson<{ neighbors: Neighbor[] }>(PATHS.neighbors, { neighbors: [] });
 
 const http = new Http({ cacheDir: '.cache', minDelayMs: 900 });
 const site = new SiteApi(config.siteUrl, config.pickerSecret);
@@ -56,9 +50,6 @@ const deps: DailyDeps = {
   fresh: {
     discover: (opts) => discover(http, opts),
     bandReleases: (subdomain) => fetchBandReleases(http, subdomain),
-    album: (url) => fetchAlbum(http, url),
-  },
-  archive: {
     album: (url) => fetchAlbum(http, url),
   },
   fetchOwnedUrls: async () => {
@@ -102,7 +93,6 @@ function numberFromEnv(name: string, fallback: number): number {
 const options: DailyOptions = {
   maxAgeDays: 7,
   maxFutureDays: 30,
-  archivePoolLimit: 80,
   // Очередь «Другой» — вся, а не первые несколько: владелец листает её, пока
   // не кончится. Порог `minTotal` её и так режет по существу, так что 40 —
   // это не «сколько показать», а потолок на случай урожайного дня.
@@ -120,4 +110,4 @@ const options: DailyOptions = {
   minTotal: numberFromEnv('MIN_TOTAL', 1.5),
 };
 
-await runDaily(profile, neighborsFile.neighbors, deps, options);
+await runDaily(profile, deps, options);

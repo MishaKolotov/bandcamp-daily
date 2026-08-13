@@ -160,17 +160,15 @@ function fakeSite(context: Partial<PickerContext> = {}) {
 const baseOptions: DailyOptions = {
   maxAgeDays: 7,
   maxFutureDays: 30,
-  archivePoolLimit: 10,
   alternativesCount: 3,
   hubTagsPerBucket: 4,
   minTotal: 0,
 };
 
-/** Зависимости без сети: свежак/архив пустые, сайт подставляется вызывающим тестом. */
+/** Зависимости без сети: свежак пустой, сайт подставляется вызывающим тестом. */
 function baseDeps(site: DailyDeps['site']): DailyDeps {
   return {
     fresh: { discover: async () => [], bandReleases: async () => [], album: async () => null },
-    archive: { album: async () => null },
     fetchOwnedUrls: async () => [],
     fetchFollowSubdomains: async () => [],
     site,
@@ -193,7 +191,7 @@ test('runDaily: отдаёт сайту ровно одного победите
   const site = fakeSite();
   const deps: DailyDeps = { ...baseDeps(site), fresh: oneCandidatePerTag };
 
-  await runDaily(fakeProfile(), [], deps, baseOptions);
+  await runDaily(fakeProfile(), deps, baseOptions);
 
   assert.equal(site.sent.length, 1);
   assert.ok(site.sent[0]?.candidate.url);
@@ -209,7 +207,7 @@ test('runDaily: имя жанра уходит человекочитаемым,
   const site = fakeSite();
   const deps: DailyDeps = { ...baseDeps(site), fresh: oneCandidatePerTag };
 
-  await runDaily(fakeProfile(), [], deps, baseOptions);
+  await runDaily(fakeProfile(), deps, baseOptions);
 
   const pick = site.sent[0]!;
   const bucket = BUCKETS.find((entry) => entry.id === pick.bucket)!;
@@ -240,7 +238,7 @@ test('runDaily: в штрафах уезжают только не-опорны�
     },
   };
 
-  await runDaily(profile, [], deps, baseOptions);
+  await runDaily(profile, deps, baseOptions);
 
   const pick = site.sent[0]!;
   assert.ok(pick.candidate.tags.includes(seed), 'опорный тег у релиза есть — иначе проверка ниже пуста');
@@ -251,7 +249,7 @@ test('runDaily: ниже порога не ходит на сайт вовсе',
   const site = fakeSite({ lastBucket: 'crust' });
   const deps: DailyDeps = { ...baseDeps(site), fresh: oneCandidatePerTag };
 
-  await runDaily(fakeProfile(), [], deps, { ...baseOptions, minTotal: 99 });
+  await runDaily(fakeProfile(), deps, { ...baseOptions, minTotal: 99 });
 
   assert.equal(site.sent.length, 0, 'молчаливый заход не должен дёргать сайт пустым запросом');
 });
@@ -273,7 +271,7 @@ test('runDaily: показанное с сайта попадает в отбо�
     },
   };
 
-  await runDaily(fakeProfile(), [], deps, baseOptions);
+  await runDaily(fakeProfile(), deps, baseOptions);
 
   assert.equal(site.sent.length, 0);
 });
@@ -313,7 +311,7 @@ test('runDaily: кандидат с тегом из profile.hardRejectTags не 
     },
   };
 
-  await runDaily(profile, [], deps, baseOptions);
+  await runDaily(profile, deps, baseOptions);
 
   const pick = site.sent[0];
   assert.ok(pick, 'некомпилированный кандидат был — пик обязан уйти');
@@ -333,7 +331,7 @@ test('runDaily: каждый вариант запаса несёт свой ж�
   const site = fakeSite();
   const deps: DailyDeps = { ...baseDeps(site), fresh: oneCandidatePerTag };
 
-  await runDaily(fakeProfile(), [], deps, baseOptions);
+  await runDaily(fakeProfile(), deps, baseOptions);
 
   const pick = site.sent[0]!;
   assert.ok(pick.alternatives.length > 0, 'запас пуст — проверять нечего');
@@ -377,7 +375,7 @@ test('runDaily: запрет на повтор жанра снимается, е
     },
   };
 
-  await runDaily(fakeProfile(), [], deps, baseOptions);
+  await runDaily(fakeProfile(), deps, baseOptions);
 
   assert.equal(site.sent.length, 1, 'заход обязан прислать альбом, а не замолчать навсегда');
   assert.equal(site.sent[0]?.bucket, onlyBucket.id);
@@ -389,7 +387,7 @@ test('runDaily: жанр прошлого пика, которого больш�
   const site = fakeSite({ lastBucket: 'sludge-that-never-existed' });
   const deps: DailyDeps = { ...baseDeps(site), fresh: oneCandidatePerTag };
 
-  await runDaily(fakeProfile(), [], deps, baseOptions);
+  await runDaily(fakeProfile(), deps, baseOptions);
 
   assert.equal(site.sent.length, 1);
 });
@@ -397,7 +395,7 @@ test('runDaily: жанр прошлого пика, которого больш�
 test('runDaily: без единого кандидата заход молчит, а не шлёт служебное «сегодня пусто»', async () => {
   const site = fakeSite();
 
-  await runDaily(fakeProfile(), [], baseDeps(site), baseOptions);
+  await runDaily(fakeProfile(), baseDeps(site), baseOptions);
 
   assert.equal(site.sent.length, 0);
 });
@@ -412,5 +410,5 @@ test('runDaily: сорванный контекст роняет заход, а 
     sendPick: async () => ({ messageId: 1 }),
   };
 
-  await assert.rejects(() => runDaily(fakeProfile(), [], baseDeps(site), baseOptions), /500/);
+  await assert.rejects(() => runDaily(fakeProfile(), baseDeps(site), baseOptions), /500/);
 });
